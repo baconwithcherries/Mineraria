@@ -1,0 +1,102 @@
+import json
+import os
+from .world import Building, Tile
+from .config import *
+
+class SaveManager:
+    def __init__(self, game):
+        self.game = game
+        self.save_dir = "data"
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
+
+    def get_save_path(self, world_name):
+        return os.path.join(self.save_dir, f"{world_name}.json")
+
+    def save_game(self):
+        if not self.game.world_name:
+            return
+            
+        data = {
+            "world_name": self.game.world_name,
+            "world_width": self.game.world.width,
+            "inventory": self.game.resource_manager.inventory,
+            "pinned": self.game.resource_manager.pinned_costs,
+            "code_used": self.game.resource_manager.code_used,
+            "camera": {
+                "x": self.game.camera.offset_x,
+                "y": self.game.camera.offset_y,
+                "zoom": self.game.camera.zoom_level
+            },
+            "buildings": []
+        }
+        
+        for (x, y), b in self.game.world.buildings.items():
+            b_data = {
+                "x": x, "y": y, "type": b.type,
+                "level": b.level,
+                "villagers": b.villagers,
+                "buffer": b.production_buffer
+            }
+            data["buildings"].append(b_data)
+            
+        villagers = []
+        for v in self.game.entity_manager.villagers:
+            villagers.append({"x": v.x, "y": v.y})
+        data["villagers"] = villagers
+
+        path = self.get_save_path(self.game.world_name)
+        try:
+            with open(path, "w") as f:
+                json.dump(data, f)
+            print(f"Game Saved: {self.game.world_name}")
+        except Exception as e:
+            print(f"Save Failed: {e}")
+
+    def load_game(self, world_name):
+        path = self.get_save_path(world_name)
+        if not os.path.exists(path):
+            return False
+            
+        try:
+            with open(path, "r") as f:
+                data = json.load(f)
+            
+            self.game.world_name = data["world_name"]
+            # Re-init world with saved width
+            from .world import World
+            self.game.world = World(data.get("world_width", 150))
+            
+            self.game.resource_manager.inventory = data["inventory"]
+            self.game.resource_manager.pinned_costs = data.get("pinned", [])
+            self.game.resource_manager.code_used = data.get("code_used", False)
+            
+            cam = data["camera"]
+            self.game.camera.offset_x = cam["x"]
+            self.game.camera.offset_y = cam["y"]
+            self.game.camera.zoom_level = cam["zoom"]
+            
+            self.game.world.buildings = {}
+            for b_data in data["buildings"]:
+                b = Building(b_data["x"], b_data["y"], b_data["type"])
+                b.level = b_data["level"]
+                b.villagers = b_data.get("villagers", 0)
+                b.production_buffer = b_data.get("buffer", 0)
+                self.game.world.buildings[(b_data["x"], b_data["y"])] = b
+                
+            self.game.entity_manager.villagers = []
+            for v_data in data.get("villagers", []):
+                self.game.entity_manager.spawn_villager(v_data["x"], v_data["y"])
+                
+            print(f"Game Loaded: {world_name}")
+            return True
+        except Exception as e:
+            print(f"Load Failed: {e}")
+            return False
+
+    def list_saves(self):
+        saves = []
+        for file in os.listdir(self.save_dir):
+            if file.endswith(".json"):
+                saves.append(file.replace(".json", ""))
+        return saves
