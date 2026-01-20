@@ -3,10 +3,18 @@ class ResourceManager:
         self.inventory = {
             "wood": 10,
             "stone": 10,
-            "iron": 10
+            "iron": 10,
+            "food": 0,
+            "steel": 0,
+            "copper": 0,
+            "gold": 0,
+            "emerald": 0,
+            "diamond": 0
         }
         self.pinned_costs = [] # List of dicts e.g. [{"wood": 5}, {"stone": 5}]
         self.code_used = False
+        self.food_efficiency = 1.0
+        self.happiness = 0.0 # 1.0 = 1%
     
     def add_resource(self, resource, amount):
         if resource in self.inventory:

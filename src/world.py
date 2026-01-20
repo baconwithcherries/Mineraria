@@ -31,6 +31,9 @@ class Building:
         if b_type == "Stone Refinery": return {"stone": 5}
         if b_type == "Mine": return {"iron": 5}
         if b_type == "House": return {"wood": 5, "stone": 5, "iron": 5}
+        if b_type == "Farm": return {"iron": 5, "stone": 5, "wood": 5}
+        if b_type == "Garden": return {"iron": 15, "stone": 15, "wood": 15, "food": 15}
+        if b_type == "Blast Furnace": return {"iron": 20, "stone": 20, "wood": 10}
         if b_type == "Rocket Ship": return {"wood": 1000, "stone": 1000, "iron": 1000}
         return {}
 
@@ -43,6 +46,7 @@ class Building:
         if self.type == "Stone Refinery": return {"stone": 10 * factor}
         if self.type == "Mine": return {"iron": 10 * factor}
         if self.type == "House": return {"wood": 10 * factor, "stone": 10 * factor}
+        if self.type == "Farm": return {"wood": 10 * factor, "stone": 10 * factor, "iron": 10 * factor}
         if self.type == "Rocket Ship": return {"wood": 200 * factor, "stone": 200 * factor, "iron": 200 * factor}
         return {}
 
@@ -52,6 +56,9 @@ class Building:
         if b_type == "Stone Refinery": return (169, 169, 169) # DarkGray
         if b_type == "Mine": return (47, 79, 79) # DarkSlateGray
         if b_type == "House": return (255, 215, 0) # Gold
+        if b_type == "Farm": return (50, 205, 50) # LimeGreen
+        if b_type == "Garden": return (255, 105, 180) # HotPink
+        if b_type == "Blast Furnace": return (70, 70, 70) # DarkGray
         if b_type == "Rocket Ship": return (200, 0, 0) # Red
         return (255, 0, 255)
 
@@ -131,5 +138,9 @@ class World:
             if b.type == "House":
                 return True
         return False
+
+    def has_all_workshops(self):
+        types = [b.type for b in self.buildings.values()]
+        return "Logging Workshop" in types and "Stone Refinery" in types and "Mine" in types
 
     

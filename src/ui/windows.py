@@ -31,13 +31,14 @@ class Window:
         return None
 
 class BuildingInspector(Window):
-    def __init__(self, building, resource_manager, world):
+    def __init__(self, building, resource_manager, world, game):
         cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
         w, h = 400, 350
         super().__init__(cx - w//2, cy - h//2, w, h, f"{building.type} (Lvl {building.level})")
         self.building = building
         self.rm = resource_manager
         self.world = world
+        self.game = game
         
         self.collect_btn = pygame.Rect(self.rect.x + 100, self.rect.y + 250, 200, 30)
         self.upgrade_btn = pygame.Rect(self.rect.x + 350, self.rect.y + 5, 20, 20)
@@ -52,9 +53,25 @@ class BuildingInspector(Window):
         elif self.building.type == "Stone Refinery": rtype = "Stone"
         elif self.building.type == "Mine": rtype = "Iron"
         
-        stats = f"{rtype}: {int(self.building.production_buffer)}"
+        # Calculate villagers inside (Assumed from tick logic requirements)
+        needed = 3 * self.building.level
+        # For display, we'll show current assignment vs needed
+        # We need to peek into game logic or just show the requirement. 
+        # Since villagers run around, let's show how many "slots" are filled.
+        # We'll use a simple logic: if enough exist globally, they are "inside".
+        
+        total_v = self.game.entity_manager.get_count()
+        # This is a bit complex without tracking individual building assignment,
+        # so let's simplify to "Villagers: X/3" based on global availability.
+        assigned = min(needed, total_v) 
+        
         if self.building.type == "House":
             stats = f"Villagers: {self.building.villagers}"
+        else:
+            stats = f"{rtype}: {int(self.building.production_buffer)}"
+            v_stats = f"Villagers: {assigned}/{needed}"
+            v_surf = self.font.render(v_stats, True, BLACK)
+            screen.blit(v_surf, (self.rect.x + 20, self.rect.y + 300))
             
         text = self.font.render(stats, True, BLACK)
         screen.blit(text, (self.rect.x + 20, self.rect.y + 40))
@@ -138,17 +155,110 @@ class BuildingInspector(Window):
 class InventoryWindow(Window):
     def __init__(self, resource_manager):
         cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
-        super().__init__(cx - 150, cy - 100, 300, 200, "Inventory")
+        w, h = 300, 200
+        super().__init__(cx - w//2, cy - h//2, w, h, "Inventory")
         self.rm = resource_manager
 
     def draw(self, screen):
         super().draw(screen)
-        y = self.rect.y + 40
+        y_offset = 50
         for res, amount in self.rm.inventory.items():
             txt = f"{res.capitalize()}: {int(amount)}"
             surf = self.font.render(txt, True, BLACK)
-            screen.blit(surf, (self.rect.x + 20, y))
-            y += 30
+            screen.blit(surf, (self.rect.x + 30, self.rect.y + y_offset))
+            y_offset += 30
+
+    def handle_input(self, event):
+        return super().handle_input(event)
+
+class TutorialPrompt(Window):
+    def __init__(self):
+        cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+        super().__init__(cx - 150, cy - 75, 300, 150, "Tutorial")
+        self.yes_btn = pygame.Rect(self.rect.x + 20, self.rect.y + 70, 120, 40)
+        self.no_btn = pygame.Rect(self.rect.x + 160, self.rect.y + 70, 120, 40)
+
+    def draw(self, screen):
+        super().draw(screen)
+        t = self.font.render("Would you like a tutorial?", True, BLACK)
+        screen.blit(t, (self.rect.centerx - t.get_width()//2, self.rect.y + 40))
+        
+        pygame.draw.rect(screen, (50, 150, 50), self.yes_btn)
+        pygame.draw.rect(screen, (150, 50, 50), self.no_btn)
+        screen.blit(self.font.render("YES", True, WHITE), (self.yes_btn.centerx - 15, self.yes_btn.centery - 10))
+        screen.blit(self.font.render("NO", True, WHITE), (self.no_btn.centerx - 10, self.no_btn.centery - 10))
+
+    def handle_input(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.yes_btn.collidepoint(event.pos): return "START_TUTORIAL"
+            if self.no_btn.collidepoint(event.pos): return "CLOSE"
+        return None
+
+class TutorialWindow(Window):
+    def __init__(self, hud):
+        cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+        w, h = 500, 250
+        super().__init__(cx - w//2, cy - h//2, w, h, "Help Guide")
+        self.hud = hud
+        self.page = 0
+        self.next_btn = pygame.Rect(self.rect.x + self.rect.width - 100, self.rect.y + self.rect.height - 40, 80, 30)
+        
+        self.pages = [
+            "Hello this is your floating island that you are stuck on your main goal is to build a rocket ship to escape your floating island to do this you must build buildings to collect these resources iron, stone.",
+            "How do you make buildings you might ask, well I will show you. First in the inventory (there will be a little arrow pointing to the inventory icon) by left clicking on it and you will see: 10 wood, 10 stone, and 10 iron.",
+            "These are the building blocks for everything in the game you can use these resources in the Buildings Tab. In the buildings tab (there would be an arrow point to the building tab) you can click on it and build your first building a house.",
+            "Click on the box just beside it and you will be able to place it down anywhere on the surface with left click once you have done that then you can build more buildings like a Logging workshop, Stone Refinery, and a Mine.",
+            "(Note: Once you build a house, you cannot build another until you have built a Logging workshop, Stone Refinery, and Mine.) Once those are built, your villagers will start moving in and working in the buildings.",
+            "You will need 3 people to work inside of your building for it to start producing. You will also need to build a farm to keep your villagers fed. You need to do it quickly because for every minute that they aren’t fed their production speed will slow down.",
+            "You can see your production and how many people are inside your building. This is the place where you can collect your resources from your buildings and keep building and collecting until you have enough to build a rocket ship.",
+            "Note: For every villager that you have you will have to collect 10 of each resource to send them on the rocket ship. Have fun and Blast Off."
+        ]
+
+    def draw(self, screen):
+        super().draw(screen)
+        # Wrap and draw text
+        words = self.pages[self.page].split(' ')
+        lines = []
+        curr_line = ""
+        for word in words:
+            if self.font.size(curr_line + word)[0] < self.rect.width - 40:
+                curr_line += word + " "
+            else:
+                lines.append(curr_line)
+                curr_line = word + " "
+        lines.append(curr_line)
+        
+        for i, line in enumerate(lines):
+            ls = self.font.render(line, True, BLACK)
+            screen.blit(ls, (self.rect.x + 20, self.rect.y + 40 + i*20))
+
+        pygame.draw.rect(screen, (100, 100, 100), self.next_btn)
+        nt = "FINISH" if self.page == len(self.pages) - 1 else "NEXT"
+        screen.blit(self.font.render(nt, True, WHITE), (self.next_btn.x + 10, self.next_btn.y + 5))
+
+        # Draw Arrows
+        assets = Assets.get()
+        arrow = assets.get_sprite("icon_arrow_up")
+        if arrow:
+            if self.page == 1: # Point to Inventory
+                pos = (self.hud.inventory_icon_rect.x + 40, self.hud.inventory_icon_rect.y + 8)
+                # Rotate arrow to point left
+                rotated = pygame.transform.rotate(arrow, 90)
+                screen.blit(rotated, pos)
+            elif self.page == 2: # Point to Building Tab
+                pos = (self.hud.build_icon_rect.x + 40, self.hud.build_icon_rect.y + 8)
+                rotated = pygame.transform.rotate(arrow, 90)
+                screen.blit(rotated, pos)
+
+    def handle_input(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.next_btn.collidepoint(event.pos):
+                if self.page < len(self.pages) - 1:
+                    self.page += 1
+                    return "HANDLED"
+                else:
+                    return "CLOSE"
+        return None
 
 class CodeWindow(Window):
     def __init__(self, resource_manager):
@@ -286,6 +396,30 @@ class RocketWindow(Window):
                     return "CLOSE"
         return None
 
+class ExitConfirmationWindow(Window):
+    def __init__(self):
+        cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+        super().__init__(cx - 150, cy - 75, 300, 150, "Exit to Title?")
+        self.save_exit_btn = pygame.Rect(self.rect.x + 20, self.rect.y + 50, 260, 30)
+        self.nosave_exit_btn = pygame.Rect(self.rect.x + 20, self.rect.y + 100, 260, 30)
+
+    def draw(self, screen):
+        super().draw(screen)
+        pygame.draw.rect(screen, (50, 150, 50), self.save_exit_btn)
+        pygame.draw.rect(screen, (150, 50, 50), self.nosave_exit_btn)
+        s1 = self.font.render("Save and Exit", True, WHITE)
+        s2 = self.font.render("Exit without Saving", True, WHITE)
+        screen.blit(s1, (self.save_exit_btn.centerx - s1.get_width()//2, self.save_exit_btn.centery - s1.get_height()//2))
+        screen.blit(s2, (self.nosave_exit_btn.centerx - s2.get_width()//2, self.nosave_exit_btn.centery - s2.get_height()//2))
+
+    def handle_input(self, event):
+        res = super().handle_input(event)
+        if res == "CLOSE": return "CLOSE"
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.save_exit_btn.collidepoint(event.pos): return "SAVE_EXIT"
+            if self.nosave_exit_btn.collidepoint(event.pos): return "NO_SAVE_EXIT"
+        return None
+
 class BuildingTab(Window):
     def __init__(self, input_handler, resource_manager, world):
         super().__init__(50, 50, 300, 400, "Construction")
@@ -293,11 +427,13 @@ class BuildingTab(Window):
         self.rm = resource_manager
         self.world = world
         
-        # Progression logic: Only show House first.
-        if self.world.has_house():
-            self.options = ["Logging Workshop", "Stone Refinery", "Mine", "House", "Rocket Ship"]
-        else:
+        # Progression logic
+        if not self.world.has_house():
             self.options = ["House"]
+        elif not self.world.has_all_workshops():
+            self.options = ["Logging Workshop", "Stone Refinery", "Mine"]
+        else:
+            self.options = ["Logging Workshop", "Stone Refinery", "Mine", "House", "Farm", "Garden", "Blast Furnace", "Rocket Ship"]
             
         self.buttons = []
         self.checkboxes = []
@@ -343,5 +479,7 @@ class BuildingTab(Window):
                     else:
                         cost = Building.get_cost(opt)
                         self.rm.pin_cost(opt, cost)
+                        # Auto-select building for placement
+                        self.input_handler.set_build_mode(opt)
                     return "HANDLED"
         return None

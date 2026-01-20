@@ -3,20 +3,24 @@ from ..config import *
 from ..assets import Assets
 
 class HUD:
-    def __init__(self, resource_manager):
-        self.rm = resource_manager
+    def __init__(self, game):
+        self.game = game
+        self.rm = game.resource_manager
         self.font = pygame.font.SysFont("Arial", 16)
         
         # Placeholder Icons (Rects)
         self.build_icon_rect = pygame.Rect(10, 10, 32, 32)
         self.inventory_icon_rect = pygame.Rect(10, 50, 32, 32)
         self.code_btn_rect = pygame.Rect(10, SCREEN_HEIGHT - 40, 60, 30)
+        self.exit_btn_rect = pygame.Rect(SCREEN_WIDTH - 110, SCREEN_HEIGHT - 40, 100, 30)
 
     def draw(self, screen):
         assets = Assets.get()
         
         # Update button position for resizing
         self.code_btn_rect.y = screen.get_height() - 40
+        self.exit_btn_rect.x = screen.get_width() - 110
+        self.exit_btn_rect.y = screen.get_height() - 40
         
         # Draw Icons (Top Left)
         # Build
@@ -43,11 +47,16 @@ class HUD:
         code_text = self.font.render("CODE", True, WHITE)
         screen.blit(code_text, (self.code_btn_rect.centerx - code_text.get_width()//2, self.code_btn_rect.centery - code_text.get_height()//2))
 
+        # Day Counter (Top Middle)
+        day_text = f"Day {self.game.tick_manager.day_counter}"
+        d_surf = self.font.render(day_text, True, WHITE)
+        screen.blit(d_surf, (screen.get_width()//2 - d_surf.get_width()//2, 10))
+
         # --- Resource List Hidden from Main HUD as per request ---
 
         # Top Right List Container (Pinned items ONLY)
         if self.rm.pinned_costs:
-            list_rect = pygame.Rect(SCREEN_WIDTH - 200, 40, 190, 300)
+            list_rect = pygame.Rect(screen.get_width() - 200, 40, 190, 300)
             s = pygame.Surface((list_rect.width, list_rect.height), pygame.SRCALPHA)
             s.fill((0, 0, 0, 50)) 
             screen.blit(s, (list_rect.x, list_rect.y))
@@ -77,3 +86,24 @@ class HUD:
                 y_offset += 5 # Spacer
                 if y_offset > list_rect.height - 20:
                     break
+
+            # Draw Food Status under the list
+            food_val = int(self.rm.inventory.get("food", 0))
+            eff_val = int(self.rm.food_efficiency * 100)
+            
+            food_txt = f"Food: {food_val}"
+            if eff_val < 100:
+                food_txt += f" (Efficiency: {eff_val}%)"
+            
+            f_surf = self.font.render(food_txt, True, WHITE)
+            screen.blit(f_surf, (list_rect.x, list_rect.y + list_rect.height + 5))
+            
+            h_txt = f"Happiness: {int(self.rm.happiness)}%"
+            h_surf = self.font.render(h_txt, True, WHITE)
+            screen.blit(h_surf, (list_rect.x, list_rect.y + list_rect.height + 25))
+
+        # Draw Exit Button
+        pygame.draw.rect(screen, (150, 50, 50), self.exit_btn_rect)
+        pygame.draw.rect(screen, WHITE, self.exit_btn_rect, 2)
+        exit_text = self.font.render("EXIT", True, WHITE)
+        screen.blit(exit_text, (self.exit_btn_rect.centerx - exit_text.get_width()//2, self.exit_btn_rect.centery - exit_text.get_height()//2))

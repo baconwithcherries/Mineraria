@@ -2,7 +2,7 @@ import random
 import math
 
 class Villager:
-    def __init__(self, x, y, game):
+    def __init__(self, x, y, game, job="Unemployed"):
         self.x = x
         self.y = y
         self.game = game
@@ -10,6 +10,7 @@ class Villager:
         self.target_x = x
         self.speed = 0.05
         self.vy = 0 # Vertical velocity
+        self.job = job
 
     def update(self):
         # 1. Gravity
@@ -72,8 +73,8 @@ class EntityManager:
         self.game = game
         self.villagers = []
 
-    def spawn_villager(self, x, y):
-        v = Villager(x, y, self.game)
+    def spawn_villager(self, x, y, job="Unemployed"):
+        v = Villager(x, y, self.game, job)
         self.villagers.append(v)
 
     def update(self):

@@ -10,23 +10,18 @@ class InputHandler:
         self.selected_building_type = None
         self.preview_x = 0
         self.preview_y = 0
+        self.last_place_time = 0
+        self.place_cooldown = 250 # ms
 
     def handle_input(self):
         mouse_pos = pygame.mouse.get_pos()
-        keys = pygame.key.get_pressed()
         
-        # --- Toggle Build Mode (Debug/Temp) ---
-        # 1: Logging, 2: Stone, 3: Mine, 4: House
-        if keys[pygame.K_1]:
-            self.set_build_mode("Logging Workshop")
-        elif keys[pygame.K_2]:
-            self.set_build_mode("Stone Refinery")
-        elif keys[pygame.K_3]:
-            self.set_build_mode("Mine")
-        elif keys[pygame.K_4]:
-            self.set_build_mode("House")
-        elif keys[pygame.K_ESCAPE]:
-            self.build_mode_active = False
+        # ESC or Right Click to cancel build mode
+        if self.build_mode_active:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_ESCAPE] or pygame.mouse.get_pressed()[2]:
+                self.build_mode_active = False
+                return
 
         # --- Mouse Interaction ---
         if self.build_mode_active:
@@ -42,7 +37,7 @@ class InputHandler:
     def set_build_mode(self, b_type):
         self.build_mode_active = True
         self.selected_building_type = b_type
-        # Debounce or wait for release could be good, but simple for now.
+        self.last_place_time = pygame.time.get_ticks() # Prevent instant placement
 
     def is_placement_valid(self, tx, ty):
         target_tile = self.game.world.get_tile(tx, ty)
@@ -71,9 +66,29 @@ class InputHandler:
         if self.game.world.get_building_at(tx, ty + 1):
             has_support = True
             
-        return has_support
+        if not has_support:
+            return False
+
+        # Blast Furnace proximity check: within 10 blocks of a stone refinery
+        if self.selected_building_type == "Blast Furnace":
+            import math
+            near_refinery = False
+            for b in self.game.world.buildings.values():
+                if b.type == "Stone Refinery":
+                    dist = math.sqrt((tx - b.x)**2 + (ty - b.y)**2)
+                    if dist <= 10:
+                        near_refinery = True
+                        break
+            if not near_refinery:
+                return False
+
+        return True
 
     def try_place_building(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_place_time < self.place_cooldown:
+            return
+
         tx, ty = self.preview_x, self.preview_y
         
         if not self.is_placement_valid(tx, ty):
@@ -83,12 +98,9 @@ class InputHandler:
         cost = Building.get_cost(self.selected_building_type)
         if self.game.resource_manager.has_resources(cost):
             # 3. Deduct & Place
-            self.game.resource_manager.deduct_resources(cost)
-            self.game.world.place_building(tx, ty, self.selected_building_type)
-            # Stop silhouette immediately after successful placement
-            self.build_mode_active = False
-            pygame.time.wait(200) 
-
+            if self.game.world.place_building(tx, ty, self.selected_building_type):
+                self.game.resource_manager.deduct_resources(cost)
+                self.last_place_time = now
     def draw_preview(self, screen):
         if self.build_mode_active:
             screen_x, screen_y = self.game.camera.world_to_screen(self.preview_x, self.preview_y)

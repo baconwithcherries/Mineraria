@@ -14,12 +14,18 @@ COLORS = {
     "METAL": (192, 192, 192),
     "METAL_DARK": (169, 169, 169),
     "RED": (200, 50, 50),
+    "RED_DARK": (150, 20, 20),
     "BLUE": (50, 50, 200),
     "SKIN": (255, 224, 189),
     "GOLD": (255, 215, 0),
     "BLACK": (0, 0, 0),
     "WHITE": (255, 255, 255),
-    "ORANGE": (255, 140, 0)
+    "ORANGE": (255, 140, 0),
+    "GLASS": (200, 255, 255, 120),
+    "LEAF": (34, 139, 34),
+    "PINK": (255, 182, 193),
+    "EMERALD": (80, 200, 120),
+    "DIAMOND": (185, 242, 255)
 }
 
 OUTPUT_DIR = os.path.join("assets", "sprites")
@@ -35,145 +41,159 @@ def create_image(name, size, draw_func):
 # --- Drawing Functions ---
 
 def draw_grass(d, w, h):
-    # Dirt base
     d.rectangle([0, 0, w, h], fill=COLORS["DIRT"])
-    # Noise
-    for i in range(0, w, 2):
-        for j in range(0, h, 2):
-            if (i+j)%3 == 0: d.point([i, j], fill=COLORS["DIRT_DARK"])
-    # Grass Top
-    d.rectangle([0, 0, w, 4], fill=COLORS["GRASS_TOP"])
-    # Grass blades
-    for i in range(0, w, 2):
-        d.line([i, 0, i, 2], fill=COLORS["GRASS_SIDE"])
+    d.rectangle([0, 0, w, h//4], fill=COLORS["GRASS_TOP"])
+    for i in range(0, w, 4):
+        d.rectangle([i, h//4, i+2, h//2], fill=COLORS["GRASS_SIDE"])
 
 def draw_dirt(d, w, h):
     d.rectangle([0, 0, w, h], fill=COLORS["DIRT"])
-    # Random noise pattern
     import random
     random.seed(42)
-    for _ in range(20):
+    for _ in range(30):
         x, y = random.randint(0, w-1), random.randint(0, h-1)
         d.point([x, y], fill=COLORS["DIRT_DARK"])
 
 def draw_stone(d, w, h):
     d.rectangle([0, 0, w, h], fill=COLORS["STONE"])
-    # Crack pattern
-    d.line([2, 2, 6, 6], fill=COLORS["STONE_DARK"], width=1)
-    d.line([10, 10, 14, 8], fill=COLORS["STONE_DARK"], width=1)
-    d.point([5, 12], fill=COLORS["STONE_DARK"])
-    d.point([12, 4], fill=COLORS["STONE_DARK"])
+    d.line([4, 4, 12, 12], fill=COLORS["STONE_DARK"], width=2)
+    d.line([20, 5, 28, 15], fill=COLORS["STONE_DARK"], width=2)
+    d.line([5, 25, 15, 20], fill=COLORS["STONE_DARK"], width=2)
 
 def draw_logging(d, w, h):
-    d.rectangle([0, 0, w, h], fill=COLORS["WOOD"])
-    d.rectangle([2, 2, w-3, h-3], outline=COLORS["WOOD_DARK"])
-    # Saw blade
-    d.ellipse([4, 4, 12, 12], fill=COLORS["METAL"], outline=COLORS["BLACK"])
+    # Log cabin style
+    d.rectangle([4, 10, 28, 30], fill=COLORS["WOOD"], outline=COLORS["BLACK"])
+    for i in range(12, 30, 6):
+        d.line([4, i, 28, i], fill=COLORS["WOOD_DARK"])
+    # Saw blade decoration
+    d.ellipse([10, 14, 22, 26], fill=COLORS["METAL"], outline=COLORS["BLACK"])
+    d.point([16, 20], fill=COLORS["BLACK"])
 
 def draw_refinery(d, w, h):
-    d.rectangle([0, 0, w, h], fill=COLORS["STONE_DARK"])
-    # Furnace hole
-    d.rectangle([4, 8, 12, 14], fill=COLORS["ORANGE"])
-    # Bricks
-    d.line([0, 4, w, 4], fill=COLORS["BLACK"])
-    d.line([0, 10, w, 10], fill=COLORS["BLACK"])
+    # Brick factory
+    d.rectangle([4, 6, 28, 30], fill=COLORS["STONE_DARK"], outline=COLORS["BLACK"])
+    for i in range(8, 30, 4):
+        d.line([4, i, 28, i], fill=COLORS["BLACK"])
+    # Chimney
+    d.rectangle([20, 0, 26, 6], fill=COLORS["STONE_DARK"], outline=COLORS["BLACK"])
+    # Furnace
+    d.rectangle([10, 20, 22, 30], fill=COLORS["BLACK"])
+    d.rectangle([12, 22, 20, 28], fill=COLORS["ORANGE"])
 
 def draw_mine(d, w, h):
     d.rectangle([0, 0, w, h], fill=COLORS["DIRT_DARK"])
-    # Entrance
-    d.ellipse([2, 2, 14, 14], fill=COLORS["BLACK"])
-    d.rectangle([0, 14, w, h], fill=COLORS["BLACK"])
-    # Supports
-    d.line([4, 2, 4, 14], fill=COLORS["WOOD"], width=2)
-    d.line([12, 2, 12, 14], fill=COLORS["WOOD"], width=2)
-    d.line([4, 2, 12, 2], fill=COLORS["WOOD"], width=2)
+    # Mine shaft
+    d.rectangle([6, 10, 26, 30], fill=COLORS["BLACK"])
+    # Wood supports
+    d.rectangle([4, 8, 8, 30], fill=COLORS["WOOD"])
+    d.rectangle([24, 8, 28, 30], fill=COLORS["WOOD"])
+    d.rectangle([4, 8, 28, 12], fill=COLORS["WOOD"])
+    # Lantern
+    d.rectangle([14, 12, 18, 18], fill=COLORS["GOLD"])
 
 def draw_house(d, w, h):
-    # Walls
-    d.rectangle([2, 6, 14, 16], fill=COLORS["WOOD"])
-    # Roof
-    d.polygon([(1, 6), (8, 0), (15, 6)], fill=COLORS["RED"])
-    # Door
-    d.rectangle([6, 10, 10, 16], fill=COLORS["WOOD_DARK"])
-    # Window
-    d.rectangle([3, 8, 5, 10], fill=COLORS["BLUE"])
-    d.rectangle([11, 8, 13, 10], fill=COLORS["BLUE"])
+    # Better house
+    d.rectangle([4, 12, 28, 30], fill=COLORS["WHITE"], outline=COLORS["BLACK"])
+    d.polygon([(2, 12), (16, 2), (30, 12)], fill=COLORS["RED_DARK"], outline=COLORS["BLACK"])
+    d.rectangle([12, 20, 20, 30], fill=COLORS["WOOD_DARK"]) # Door
+    d.rectangle([6, 16, 10, 20], fill=COLORS["BLUE"]) # Window
+    d.rectangle([22, 16, 26, 20], fill=COLORS["BLUE"])
+
+def draw_farm(d, w, h):
+    # Glass box
+    d.rectangle([2, 2, 29, 29], fill=COLORS["GLASS"], outline=COLORS["WHITE"])
+    # Vines
+    d.line([8, 28, 16, 10], fill=COLORS["LEAF"], width=2)
+    d.line([24, 28, 16, 15], fill=COLORS["LEAF"], width=2)
+    # Fruit
+    d.ellipse([14, 8, 18, 12], fill=COLORS["RED"])
+    d.ellipse([10, 18, 14, 22], fill=COLORS["RED"])
+    d.ellipse([20, 16, 24, 20], fill=COLORS["RED"])
+
+def draw_garden(d, w, h):
+    # More detailed version of Farm
+    d.rectangle([2, 2, 29, 29], fill=COLORS["GLASS"], outline=COLORS["WHITE"])
+    # Flowers
+    d.line([16, 28, 16, 10], fill=COLORS["LEAF"], width=2)
+    d.ellipse([12, 6, 20, 10], fill=COLORS["PINK"]) # Center flower
+    d.ellipse([6, 14, 10, 18], fill=COLORS["GOLD"]) # Left flower
+    d.ellipse([22, 14, 26, 18], fill=(255, 255, 255)) # Right flower
+    # Grass patches
+    d.rectangle([4, 26, 28, 29], fill=COLORS["GRASS_TOP"])
+
+def draw_blast_furnace(d, w, h):
+    # Heavy industrial furnace
+    d.rectangle([2, 4, 30, 30], fill=(50, 50, 50), outline=COLORS["BLACK"])
+    d.rectangle([6, 0, 12, 4], fill=(50, 50, 50)) # Pipe 1
+    d.rectangle([20, 0, 26, 4], fill=(50, 50, 50)) # Pipe 2
+    # Lava/Molten metal glow
+    d.rectangle([8, 15, 24, 25], fill=COLORS["ORANGE"])
+    d.line([8, 15, 24, 15], fill=COLORS["BLACK"])
+    d.line([8, 25, 24, 25], fill=COLORS["BLACK"])
+    # Rivets
+    for i in range(6, 30, 8):
+        d.point([4, i], fill=COLORS["METAL"])
+        d.point([28, i], fill=COLORS["METAL"])
 
 def draw_rocket(d, w, h):
-    # Fins
-    d.polygon([(2, 14), (0, 16), (4, 12)], fill=COLORS["RED"])
-    d.polygon([(14, 14), (16, 16), (12, 12)], fill=COLORS["RED"])
-    # Body
-    d.ellipse([4, 2, 12, 14], fill=COLORS["METAL"])
-    # Window
-    d.ellipse([6, 6, 10, 10], fill=COLORS["BLUE"], outline=COLORS["METAL_DARK"])
+    # Detailed Rocket
+    d.polygon([(16, 0), (8, 10), (24, 10)], fill=COLORS["RED"]) # Nose
+    d.rectangle([8, 10, 24, 26], fill=COLORS["METAL"], outline=COLORS["BLACK"]) # Body
+    d.ellipse([12, 14, 20, 22], fill=COLORS["BLUE"], outline=COLORS["BLACK"]) # Window
+    d.polygon([(8, 20), (2, 30), (8, 30)], fill=COLORS["RED"]) # Left fin
+    d.polygon([(24, 20), (30, 30), (24, 30)], fill=COLORS["RED"]) # Right fin
 
 def draw_villager(d, w, h):
-    # Head
-    d.rectangle([6, 2, 10, 6], fill=COLORS["SKIN"])
-    # Body
-    d.rectangle([5, 6, 11, 12], fill=COLORS["BLUE"])
-    # Legs
-    d.rectangle([6, 12, 7, 16], fill=COLORS["BLACK"])
-    d.rectangle([9, 12, 10, 16], fill=COLORS["BLACK"])
+    d.rectangle([12, 4, 20, 12], fill=COLORS["SKIN"]) # Head
+    d.rectangle([10, 12, 22, 24], fill=COLORS["BLUE"]) # Body
+    d.rectangle([12, 24, 14, 30], fill=COLORS["BLACK"]) # Leg L
+    d.rectangle([18, 24, 20, 30], fill=COLORS["BLACK"]) # Leg R
 
 def draw_icon_build(d, w, h):
-    # Hammer
-    d.line([6, 26, 16, 16], fill=COLORS["WOOD"], width=4) # Handle
-    d.rectangle([14, 8, 24, 18], fill=COLORS["GOLD"]) # Head
+    d.line([6, 26, 16, 16], fill=COLORS["WOOD"], width=4)
+    d.rectangle([14, 8, 24, 18], fill=COLORS["GOLD"], outline=COLORS["BLACK"])
 
 def draw_icon_inv(d, w, h):
-    d.rectangle([4, 8, 28, 24], fill=COLORS["WOOD"])
-    d.rectangle([4, 8, 28, 24], outline=COLORS["BLACK"], width=2)
-    d.rectangle([12, 14, 20, 18], fill=COLORS["GOLD"]) # Lock
-    d.arc([4, 4, 28, 12], 180, 360, fill=COLORS["WOOD"]) # Lid curve attempt
+    d.rectangle([4, 10, 28, 26], fill=COLORS["WOOD"], outline=COLORS["BLACK"])
+    d.rectangle([14, 16, 18, 20], fill=COLORS["GOLD"])
 
 def draw_icon_arrow(d, w, h):
-    d.polygon([(8, 0), (16, 8), (12, 8), (12, 16), (4, 16), (4, 8), (0, 8)], fill=COLORS["GRASS_TOP"], outline=COLORS["BLACK"])
+    d.polygon([(16, 2), (28, 14), (20, 14), (20, 28), (12, 28), (12, 14), (4, 14)], fill=COLORS["GRASS_TOP"], outline=COLORS["BLACK"])
 
 def draw_cloud(d, w, h):
-    # Fluffy white clouds
-    d.ellipse([2, 8, 10, 14], fill=COLORS["WHITE"])
-    d.ellipse([6, 4, 18, 14], fill=COLORS["WHITE"])
-    d.ellipse([14, 8, 26, 14], fill=COLORS["WHITE"])
-    d.ellipse([10, 10, 22, 18], fill=COLORS["WHITE"])
+    d.ellipse([2, 10, 14, 22], fill=COLORS["WHITE"])
+    d.ellipse([10, 4, 22, 22], fill=COLORS["WHITE"])
+    d.ellipse([18, 10, 30, 22], fill=COLORS["WHITE"])
 
 def draw_title_bg(d, w, h):
-    # Sky
     d.rectangle([0, 0, w, h], fill=(135, 206, 235))
-    # Ground
     d.rectangle([0, h-40, w, h], fill=COLORS["GRASS_TOP"])
-    # Some buildings and villagers to look "cool"
-    # House
-    d.rectangle([40, h-80, 80, h-40], fill=COLORS["WOOD"])
-    d.polygon([(40, h-80), (60, h-110), (80, h-80)], fill=COLORS["RED"])
-    # Mine
-    d.ellipse([150, h-70, 200, h-40], fill=COLORS["BLACK"])
-    # Villagers
-    for i in range(5):
-        vx = 100 + i*40
-        d.rectangle([vx, h-60, vx+10, h-40], fill=COLORS["BLUE"])
-        d.rectangle([vx+2, h-70, vx+8, h-60], fill=COLORS["SKIN"])
 
 def generate_all():
-    create_image("grass.png", (16, 16), draw_grass)
-    create_image("title_bg.png", (640, 360), draw_title_bg)
-    create_image("cloud.png", (32, 20), draw_cloud)
-    # ...
-    create_image("dirt.png", (16, 16), draw_dirt)
-    create_image("stone.png", (16, 16), draw_stone)
+    # Blocks and Tiles
+    create_image("grass.png", (32, 32), draw_grass)
+    create_image("dirt.png", (32, 32), draw_dirt)
+    create_image("stone.png", (32, 32), draw_stone)
     
-    create_image("logging_workshop.png", (16, 16), draw_logging)
-    create_image("stone_refinery.png", (16, 16), draw_refinery)
-    create_image("mine.png", (16, 16), draw_mine)
-    create_image("house.png", (16, 16), draw_house)
-    create_image("rocket_ship.png", (16, 16), draw_rocket)
+    # Buildings
+    create_image("logging_workshop.png", (32, 32), draw_logging)
+    create_image("stone_refinery.png", (32, 32), draw_refinery)
+    create_image("mine.png", (32, 32), draw_mine)
+    create_image("house.png", (32, 32), draw_house)
+    create_image("rocket_ship.png", (32, 32), draw_rocket)
+    create_image("farm.png", (32, 32), draw_farm)
+    create_image("garden.png", (32, 32), draw_garden)
+    create_image("blast_furnace.png", (32, 32), draw_blast_furnace)
     
-    create_image("villager.png", (16, 16), draw_villager)
+    # Entities
+    create_image("villager.png", (32, 32), draw_villager)
     
+    # UI
+    create_image("cloud.png", (32, 32), draw_cloud)
     create_image("icon_build.png", (32, 32), draw_icon_build)
     create_image("icon_inventory.png", (32, 32), draw_icon_inv)
-    create_image("icon_arrow_up.png", (16, 16), draw_icon_arrow)
+    create_image("icon_arrow_up.png", (32, 32), draw_icon_arrow)
+    create_image("title_bg.png", (640, 360), draw_title_bg)
 
 if __name__ == "__main__":
     generate_all()

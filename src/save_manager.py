@@ -20,6 +20,11 @@ class SaveManager:
         data = {
             "world_name": self.game.world_name,
             "world_width": self.game.world.width,
+            "completed": self.game.is_completed,
+            "game_time": self.game.game_time,
+            "day_counter": self.game.tick_manager.day_counter,
+            "food_efficiency": self.game.resource_manager.food_efficiency,
+            "happiness": self.game.resource_manager.happiness,
             "inventory": self.game.resource_manager.inventory,
             "pinned": self.game.resource_manager.pinned_costs,
             "code_used": self.game.resource_manager.code_used,
@@ -42,7 +47,7 @@ class SaveManager:
             
         villagers = []
         for v in self.game.entity_manager.villagers:
-            villagers.append({"x": v.x, "y": v.y})
+            villagers.append({"x": v.x, "y": v.y, "job": v.job})
         data["villagers"] = villagers
 
         path = self.get_save_path(self.game.world_name)
@@ -62,7 +67,13 @@ class SaveManager:
             with open(path, "r") as f:
                 data = json.load(f)
             
+            self.game.init_managers()
             self.game.world_name = data["world_name"]
+            self.game.is_completed = data.get("completed", False)
+            self.game.game_time = data.get("game_time", 0)
+            self.game.tick_manager.day_counter = data.get("day_counter", 1)
+            self.game.resource_manager.food_efficiency = data.get("food_efficiency", 1.0)
+            self.game.resource_manager.happiness = data.get("happiness", 0.0)
             # Re-init world with saved width
             from .world import World
             self.game.world = World(data.get("world_width", 150))
@@ -86,7 +97,7 @@ class SaveManager:
                 
             self.game.entity_manager.villagers = []
             for v_data in data.get("villagers", []):
-                self.game.entity_manager.spawn_villager(v_data["x"], v_data["y"])
+                self.game.entity_manager.spawn_villager(v_data["x"], v_data["y"], v_data.get("job", "Unemployed"))
                 
             print(f"Game Loaded: {world_name}")
             return True
