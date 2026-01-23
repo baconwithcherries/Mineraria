@@ -41,6 +41,8 @@ class Assets:
         self.sprites["Farm"] = load("farm.png")
         self.sprites["Garden"] = load("garden.png")
         self.sprites["Blast Furnace"] = load("blast_furnace.png")
+        self.sprites["Warehouse"] = load("warehouse.png")
+        self.sprites["Laboratory"] = load("laboratory.png")
         
         # Entities
         self.sprites["villager"] = load("villager.png")

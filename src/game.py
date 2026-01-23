@@ -6,13 +6,14 @@ from .camera import Camera
 from .resources import ResourceManager
 from .ui.hud import HUD
 from .ui.manager import UIManager
-from .ui.windows import BuildingInspector, BuildingTab, InventoryWindow, RocketWindow, EndGameWindow, CodeWindow, TutorialPrompt, TutorialWindow, ExitConfirmationWindow
+from .ui.windows import BuildingInspector, BuildingTab, InventoryWindow, RocketWindow, EndGameWindow, CodeWindow, TutorialPrompt, TutorialWindow, ExitConfirmationWindow, BlastFurnaceInspector, WorkerAssignmentWindow, ResearchWindow
 from .ui.title_screen import TitleScreen
 from .input_handler import InputHandler
 from .entities import EntityManager
 from .tick_manager import TickManager
 from .save_manager import SaveManager
 from .assets import Assets
+from .particles import ParticleManager
 
 class Game:
     def __init__(self):
@@ -33,6 +34,7 @@ class Game:
         self.assets = Assets.get()
         self.save_manager = SaveManager(self)
         self.title_screen = TitleScreen(self)
+        self.particle_manager = ParticleManager()
         
         # World/Gameplay objects
         self.world = None
@@ -124,6 +126,16 @@ class Game:
                 self.ui_manager.windows = []
                 self.ui_manager.open_window(InventoryWindow(self.resource_manager))
                 return
+            elif self.hud.jobs_icon_rect.collidepoint(event.pos):
+                self.ui_manager.windows = []
+                self.ui_manager.open_window(WorkerAssignmentWindow(self.resource_manager, self.world))
+                return
+            elif self.hud.speed_btn_rect.collidepoint(event.pos):
+                if self.tick_manager.time_scale == 1:
+                    self.tick_manager.time_scale = 10
+                else:
+                    self.tick_manager.time_scale = 1
+                return
             elif self.hud.code_btn_rect.collidepoint(event.pos):
                 self.ui_manager.windows = []
                 self.ui_manager.open_window(CodeWindow(self.resource_manager))
@@ -140,12 +152,14 @@ class Game:
                 ix, iy = int(wx), int(wy)
                 building = self.world.get_building_at(ix, iy)
                 if building:
-                    if building.type == "Blast Furnace":
-                        return # Cannot right click on Blast Furnace
                     self.input_handler.build_mode_active = False
                     self.ui_manager.windows = [] # Clear existing windows
                     if building.type == "Rocket Ship":
                         self.ui_manager.open_window(RocketWindow(building, self.resource_manager, self.entity_manager, self))
+                    elif building.type == "Blast Furnace":
+                        self.ui_manager.open_window(BlastFurnaceInspector(building, self.resource_manager, self.world, self))
+                    elif building.type == "Laboratory":
+                        self.ui_manager.open_window(ResearchWindow(self.resource_manager))
                     else:
                         self.ui_manager.open_window(BuildingInspector(building, self.resource_manager, self.world, self))
                     return
@@ -205,6 +219,7 @@ class Game:
         if self.state == STATE_GAME:
             self.tick_manager.update()
             self.entity_manager.update()
+            self.particle_manager.update()
             
             # Time tracking for food mechanics
             self.game_time += self.clock.get_time() / 1000.0
@@ -213,8 +228,13 @@ class Game:
                 # Every new minute
                 self.last_minute_tick = current_minute
                 if current_minute > 3:
-                    # Drop production efficiency by 5% every minute after 3 minutes
-                    self.resource_manager.food_efficiency = max(0.0, self.resource_manager.food_efficiency - 0.05)
+                    # Only drop production efficiency if OUT of food
+                    if self.resource_manager.inventory.get("food", 0) <= 0:
+                        self.resource_manager.food_efficiency = max(0.0, self.resource_manager.food_efficiency - 0.05)
+                    else:
+                        # Optional: recover efficiency if fed? 
+                        # Let's keep it at current level or slowly recover to 1.0
+                        self.resource_manager.food_efficiency = min(1.0, self.resource_manager.food_efficiency + 0.05)
             
             # Launch Logic
             for b in self.world.buildings.values():
@@ -283,6 +303,9 @@ class Game:
                         pygame.draw.rect(self.screen, Building.get_color(building.type), (rect.x, draw_y, rect.width, rect.height))
 
         for villager in self.entity_manager.villagers:
+            if villager.state == "WORKING":
+                continue
+
             screen_x, screen_y = self.camera.world_to_screen(villager.x, villager.y)
             size = TILE_SIZE * self.camera.zoom_level
             v_size = size * 0.8
@@ -304,10 +327,127 @@ class Game:
                 # Since the whole sprite is small, we tint the whole thing or just a part.
                 # For simplicity, we'll tint the whole sprite using BLEND_RGB_MULT
                 tinted = scaled.copy()
-                tinted.fill(color, special_flags=pygame.BLEND_RGB_MULT)
+                tinted.fill(color, special_flags=pygame.BLEND_RGB_MULT);
                 
                 dest = (int(screen_x + (size-v_size)/2), int(screen_y + (size-v_size)))
                 self.screen.blit(tinted, dest)
+                
+                # Draw Hats
+                hat_color = None
+                if villager.job == "Farm": hat_color = (200, 200, 100) # Straw Hat
+                elif villager.job == "Mine": hat_color = (255, 255, 0) # Hard Hat
+                elif villager.job == "Logging Workshop": hat_color = (139, 69, 19) # Beanie
+                elif villager.job == "Blast Furnace": hat_color = (50, 50, 50) # Dark Helmet
+                
+                if hat_color:
+                    hat_rect = pygame.Rect(dest[0], dest[1], v_size, v_size // 4)
+                    pygame.draw.rect(self.screen, hat_color, hat_rect)
+
+        self.particle_manager.draw(self.screen, self.camera)
+
+        # --- Dynamic Lighting ---
+        # Calculate darkness: 0 (Day) -> 150 (Night)
+        # Cycle: 0-600 Day, 600-1200 Night
+        time = self.tick_manager.current_time
+        max_alpha = 180
+        if time < 500: # Day
+            alpha = 0
+        elif time < 600: # Sunset
+            alpha = int(((time - 500) / 100) * max_alpha)
+        elif time < 1100: # Night
+            alpha = max_alpha
+        else: # Sunrise
+            alpha = int(((1200 - time) / 100) * max_alpha)
+            
+        if alpha > 0:
+            lighting = pygame.Surface((self.screen.get_width(), self.screen.get_height()), pygame.SRCALPHA)
+            lighting.fill((0, 0, 20, alpha)) # Dark Blue tint
+            
+            # Draw Lights (Glows)
+            # Iterate visible buildings to add lights
+            for x in range(start_col, end_col):
+                for y in range(start_row, end_row):
+                    building = self.world.get_building_at(x, y)
+                    if building and building.type in ["House", "Blast Furnace", "Stone Refinery"]:
+                        screen_x, screen_y = self.camera.world_to_screen(x, y)
+                        size = TILE_SIZE * self.camera.zoom_level
+                        
+                        # Create a glow circle
+                        radius = int(size * 1.5)
+                        glow = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
+                        
+                        # Warm yellow/orange light
+                        glow_color = (255, 200, 100, 100) # Semi-transparent
+                        pygame.draw.circle(glow, glow_color, (radius, radius), radius)
+                        
+                        # "Cut out" the darkness using ADD blend mode which brightens the underlying layers
+                        # Actually, better approach for 2D lighting overlay:
+                        # Draw transparency on the darkness layer using BLEND_RGBA_SUB (subtract alpha)
+                        # Or simple approach: draw glow ON TOP of darkness with ADD.
+                        
+                        # Let's draw glow on lighting surf using BLEND_RGBA_SUB to make it transparent
+                        # pygame.draw.circle(lighting, (0, 0, 0, 0), ...) doesn't work easily with fill.
+                        
+                        # Alternative: Blit special light sprites with BLEND_RGBA_MIN or similar? 
+                        # Easiest readable way: Draw the lighting surface, then draw additive lights on top.
+                        pass # Done in next loop for batching or just here
+            
+            self.screen.blit(lighting, (0, 0))
+            
+            # Additive Lights Pass
+            for x in range(start_col, end_col):
+                for y in range(start_row, end_row):
+                    building = self.world.get_building_at(x, y)
+                    if building and building.type in ["House", "Blast Furnace"]:
+                        screen_x, screen_y = self.camera.world_to_screen(x, y)
+                        size = TILE_SIZE * self.camera.zoom_level
+                        
+                        # Draw a warm glow
+                        center = (int(screen_x + size/2), int(screen_y + size/2))
+                        radius = int(size * 2)
+                        
+                        # We simulate glow by drawing a circle with special flags
+                        # Since pygame drawing doesn't support gradients easily, we use a pre-made surface or simple concentric circles
+                        
+                        # Simple: concentric circles
+                        for r in range(radius, 0, -5):
+                            alpha_step = 5
+                            # Yellowish
+                            pygame.draw.circle(self.screen, (20, 15, 5), center, r, 0) 
+                            # This just paints on top. 
+                            # To "light up" the dark overlay, we should have cut holes in it.
+                            
+            # Correction: The best way without complex shaders in Pygame is:
+            # 1. Create darkness surface (filled with dark color)
+            # 2. Draw "light" shapes (white/transparent) onto the darkness surface with BLEND_RGBA_SUB to reduce alpha.
+            # 3. Blit darkness surface.
+            
+            lighting = pygame.Surface((self.screen.get_width(), self.screen.get_height()), pygame.SRCALPHA)
+            lighting.fill((0, 0, 20, alpha))
+            
+            # Cut holes
+            for x in range(start_col, end_col):
+                for y in range(start_row, end_row):
+                    building = self.world.get_building_at(x, y)
+                    if building and building.type in ["House", "Blast Furnace", "Stone Refinery"]:
+                        screen_x, screen_y = self.camera.world_to_screen(x, y)
+                        size = TILE_SIZE * self.camera.zoom_level
+                        center = (int(screen_x + size/2), int(screen_y + size/2))
+                        radius = int(size * 2.5)
+                        
+                        # Draw circle with 0 alpha (transparent) onto the lighting surface?
+                        # No, we need to Subtract Alpha. 
+                        # Pygame method: blit a surface with BLEND_RGBA_SUB
+                        
+                        light_mask = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
+                        # Gradient hack: multiple circles
+                        for r in range(radius, 0, -2):
+                            # Subtract a small amount of alpha each step
+                            pygame.draw.circle(light_mask, (0, 0, 0, 3), (radius, radius), r)
+                        
+                        lighting.blit(light_mask, (center[0]-radius, center[1]-radius), special_flags=pygame.BLEND_RGBA_SUB)
+
+            self.screen.blit(lighting, (0, 0))
 
         if not self.ui_manager.active_window:
             self.input_handler.draw_preview(self.screen)

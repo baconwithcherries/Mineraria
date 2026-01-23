@@ -11,14 +11,32 @@ class ResourceManager:
             "emerald": 0,
             "diamond": 0
         }
+        
+        # Job Targets (-1 means Max)
+        self.job_targets = {
+            "Logging Workshop": -1,
+            "Stone Refinery": -1,
+            "Mine": -1,
+            "Farm": -1,
+            "Garden": -1, # Garden uses Farm logic usually but might need separate entry if we treat them distinct
+            "Blast Furnace": -1,
+            "Laboratory": -1
+        }
+        
         self.pinned_costs = [] # List of dicts e.g. [{"wood": 5}, {"stone": 5}]
         self.code_used = False
         self.food_efficiency = 1.0
         self.happiness = 0.0 # 1.0 = 1%
+        self.happiness_from_upgrades = 0.0
+        self.max_storage = 100
+        
+        # Tech
+        self.unlocked_techs = ["Woodworking"] # Starting tech
+        self.science_points = 0
     
     def add_resource(self, resource, amount):
         if resource in self.inventory:
-            self.inventory[resource] += amount
+            self.inventory[resource] = min(self.inventory[resource] + amount, self.max_storage)
 
     def remove_resource(self, resource, amount):
         if resource in self.inventory and self.inventory[resource] >= amount:

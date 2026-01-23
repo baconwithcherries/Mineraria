@@ -78,6 +78,10 @@ class SaveManager:
             from .world import World
             self.game.world = World(data.get("world_width", 150))
             
+            # Re-init camera
+            from .camera import Camera
+            self.game.camera = Camera(self.game.world.width * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE)
+            
             self.game.resource_manager.inventory = data["inventory"]
             self.game.resource_manager.pinned_costs = data.get("pinned", [])
             self.game.resource_manager.code_used = data.get("code_used", False)
@@ -97,7 +101,18 @@ class SaveManager:
                 
             self.game.entity_manager.villagers = []
             for v_data in data.get("villagers", []):
-                self.game.entity_manager.spawn_villager(v_data["x"], v_data["y"], v_data.get("job", "Unemployed"))
+                v = self.game.entity_manager.spawn_villager(v_data["x"], v_data["y"], v_data.get("job", "Unemployed"))
+                
+                # Re-link assignment based on job
+                if v.job != "Unemployed" and v.job != "House":
+                    target_type = v.job
+                    possible_buildings = [b for b in self.game.world.buildings.values() 
+                                         if (b.type == target_type or (target_type == "Farm" and b.type == "Garden"))
+                                         and len(b.assigned_workers) < 3 * b.level]
+                    if possible_buildings:
+                        workplace = possible_buildings[0]
+                        v.assigned_building = workplace
+                        workplace.assigned_workers.append(v)
                 
             print(f"Game Loaded: {world_name}")
             return True

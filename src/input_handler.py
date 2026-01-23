@@ -54,11 +54,6 @@ class InputHandler:
         if self.game.world.get_building_at(tx, ty):
             return False
 
-        # Surface check: SURFACE_LEVEL is 50. Placement at < 50 is above ground.
-        # ty=49 is directly on top of y=50 (surface).
-        if ty >= 50:
-            return False # Cannot place "under" the surface level
-
         # Support check: Must be on solid ground (grass/dirt/stone) or a building
         has_support = False
         if below_tile.tile_type != "air":
@@ -101,6 +96,12 @@ class InputHandler:
             if self.game.world.place_building(tx, ty, self.selected_building_type):
                 self.game.resource_manager.deduct_resources(cost)
                 self.last_place_time = now
+                
+                # Spawn Dust
+                if hasattr(self.game, 'particle_manager'):
+                    # Burst of particles
+                    for _ in range(5):
+                        self.game.particle_manager.spawn_particle(tx + 0.5, ty + 0.5, (101, 67, 33)) # Dirt Brown
     def draw_preview(self, screen):
         if self.build_mode_active:
             screen_x, screen_y = self.game.camera.world_to_screen(self.preview_x, self.preview_y)
