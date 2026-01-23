@@ -1,5 +1,7 @@
 # Mineraria Survival
 
+![screenshot](mineraria.JPG)
+
 A 2D survival strategy game built with Python and Pygame-CE.
 
 ## Installation
