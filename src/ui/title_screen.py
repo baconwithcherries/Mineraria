@@ -35,7 +35,7 @@ class TitleScreen:
         sw, sh = self.game.screen.get_size()
         if self.state == "MAIN":
             buttons = self.get_buttons()
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if buttons["new"].collidepoint(event.pos):
                     self.state = "NEW_NAME"
                 elif buttons["load"].collidepoint(event.pos):
@@ -61,7 +61,7 @@ class TitleScreen:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.state = "NEW_NAME"
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 for size, rect in self.get_size_buttons().items():
                     if rect.collidepoint(event.pos):
                         self.game.start_new_game(self.world_name_input, WORLD_SIZES[size])
@@ -70,7 +70,7 @@ class TitleScreen:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.state = "MAIN"
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 sw, sh = self.game.screen.get_size()
                 for i, save in enumerate(self.saves):
                     rect = pygame.Rect(sw//2 - 150, sh//2 - 100 + i*45, 300, 40)

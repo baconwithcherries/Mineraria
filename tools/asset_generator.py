@@ -198,23 +198,19 @@ def draw_garden(surf, w, h):
         pygame.draw.line(surf, COLORS["GRASS_MID"], (x+2, 24), (x+2, 14))
         pygame.draw.ellipse(surf, c, (x, 10, 5, 5))
 
-def draw_blast_furnace(surf, w, h):
-    # Big Industrial Furnace
-    pygame.draw.rect(surf, COLORS["METAL_DARK"], (2, 4, 28, 28))
-    pygame.draw.rect(surf, COLORS["BLACK"], (2, 4, 28, 28), 1)
+def draw_oxygenator(surf, w, h):
+    # Futuristic Air Filter / Tank
+    # Main Tank
+    pygame.draw.rect(surf, COLORS["METAL_LIGHT"], (6, 6, 20, 26))
+    pygame.draw.rect(surf, COLORS["METAL_MID"], (6, 6, 20, 26), 1)
     
-    # Rivets
-    for x in [4, 28]:
-        for y in range(4, 32, 6):
-            surf.set_at((x, y), COLORS["METAL_LIGHT"])
-            
-    # Molten Core Window
-    pygame.draw.rect(surf, COLORS["LAVA_LIGHT"], (8, 12, 16, 10))
-    pygame.draw.rect(surf, COLORS["BLACK"], (8, 12, 16, 10), 1)
+    # Bubbles / Window
+    pygame.draw.rect(surf, COLORS["GLASS"], (10, 10, 12, 18))
+    pygame.draw.rect(surf, COLORS["METAL_DARK"], (10, 10, 12, 18), 1)
     
     # Pipes
-    pygame.draw.rect(surf, COLORS["METAL_MID"], (0, 8, 4, 4))
-    pygame.draw.rect(surf, COLORS["METAL_MID"], (28, 20, 4, 4))
+    pygame.draw.rect(surf, COLORS["METAL_DARK"], (2, 20, 4, 4))
+    pygame.draw.rect(surf, COLORS["METAL_DARK"], (26, 12, 4, 4))
 
 def draw_rocket(surf, w, h):
     # Retro Rocket
@@ -283,10 +279,31 @@ def draw_icon_arrow(surf, w, h):
     pygame.draw.polygon(surf, COLORS["GRASS_MID"], [(16, 4), (28, 20), (20, 20), (20, 28), (12, 28), (12, 20), (4, 20)])
     pygame.draw.polygon(surf, COLORS["BLACK"], [(16, 4), (28, 20), (20, 20), (20, 28), (12, 28), (12, 20), (4, 20)], 1)
 
+def draw_trader(surf, w, h):
+    # Hot Air Balloon
+    # Balloon
+    pygame.draw.ellipse(surf, COLORS["RED"], (6, 2, 20, 24))
+    pygame.draw.ellipse(surf, COLORS["WHITE"], (6, 2, 20, 24), 2)
+    # Basket
+    pygame.draw.rect(surf, COLORS["WOOD_DARK"], (12, 26, 8, 6))
+    # Ropes
+    pygame.draw.line(surf, COLORS["BLACK"], (10, 18), (12, 26))
+    pygame.draw.line(surf, COLORS["BLACK"], (22, 18), (20, 26))
+
 def draw_cloud(surf, w, h):
     pygame.draw.ellipse(surf, COLORS["WHITE"], (4, 10, 12, 12))
     pygame.draw.ellipse(surf, COLORS["WHITE"], (12, 4, 20, 16))
     pygame.draw.ellipse(surf, COLORS["WHITE"], (20, 8, 10, 12))
+
+def draw_ladder(surf, w, h):
+    # Wooden Ladder
+    # Side rails
+    pygame.draw.rect(surf, COLORS["WOOD_DARK"], (6, 0, 4, h))
+    pygame.draw.rect(surf, COLORS["WOOD_DARK"], (22, 0, 4, h))
+    # Rungs
+    for y in range(4, h, 8):
+        pygame.draw.rect(surf, COLORS["WOOD_MID"], (6, y, 20, 4))
+        pygame.draw.rect(surf, COLORS["BLACK"], (6, y, 20, 4), 1)
 
 def draw_title_bg(surf, w, h):
     # Gradient Sky
@@ -319,15 +336,17 @@ def generate_all():
     create_image("rocket_ship.png", (32, 32), draw_rocket)
     create_image("farm.png", (32, 32), draw_farm)
     create_image("garden.png", (32, 32), draw_garden)
-    create_image("blast_furnace.png", (32, 32), draw_blast_furnace)
     create_image("warehouse.png", (32, 32), draw_warehouse)
+    create_image("oxygenator.png", (32, 32), draw_oxygenator)
     create_image("laboratory.png", (32, 32), draw_lab)
     
     # Entities
     create_image("villager.png", (32, 32), draw_villager)
+    create_image("trader.png", (32, 32), draw_trader)
     
     # UI
     create_image("cloud.png", (64, 32), draw_cloud)
+    create_image("ladder.png", (32, 32), draw_ladder)
     create_image("icon_build.png", (32, 32), draw_icon_build)
     create_image("icon_inventory.png", (32, 32), draw_icon_inv)
     create_image("icon_arrow_up.png", (32, 32), draw_icon_arrow)

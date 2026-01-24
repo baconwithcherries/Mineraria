@@ -27,7 +27,10 @@ class SaveManager:
             "happiness": self.game.resource_manager.happiness,
             "inventory": self.game.resource_manager.inventory,
             "pinned": self.game.resource_manager.pinned_costs,
-            "code_used": self.game.resource_manager.code_used,
+            "used_codes": self.game.resource_manager.used_codes,
+            "science_points": self.game.resource_manager.science_points,
+            "unlocked_techs": self.game.resource_manager.unlocked_techs,
+            "job_targets": self.game.resource_manager.job_targets,
             "camera": {
                 "x": self.game.camera.offset_x,
                 "y": self.game.camera.offset_y,
@@ -41,7 +44,12 @@ class SaveManager:
                 "x": x, "y": y, "type": b.type,
                 "level": b.level,
                 "villagers": b.villagers,
-                "buffer": b.production_buffer
+                "buffer": b.production_buffer,
+                "production_history": b.production_history,
+                "last_day": b.last_day,
+                "target_workers": b.target_workers,
+                "buffers": b.buffers,
+                "histories": b.histories
             }
             data["buildings"].append(b_data)
             
@@ -67,16 +75,32 @@ class SaveManager:
             with open(path, "r") as f:
                 data = json.load(f)
             
-            self.game.init_managers()
+            # Reset managers to ensure fresh state
+            self.game.resource_manager = None
+            self.game.hud = None
+            self.game.ui_manager = None
+            self.game.input_handler = None
+            self.game.entity_manager = None
+            self.game.tick_manager = None
+            
             self.game.world_name = data["world_name"]
             self.game.is_completed = data.get("completed", False)
             self.game.game_time = data.get("game_time", 0)
+            self.game.auto_save_timer = 0
+            
+            # Re-init world with saved width FIRST
+            from .world import World
+            self.game.world = World(data.get("world_width", 150))
+            
+            # NOW init managers
+            self.game.init_managers()
+            
             self.game.tick_manager.day_counter = data.get("day_counter", 1)
             self.game.resource_manager.food_efficiency = data.get("food_efficiency", 1.0)
             self.game.resource_manager.happiness = data.get("happiness", 0.0)
-            # Re-init world with saved width
-            from .world import World
-            self.game.world = World(data.get("world_width", 150))
+            self.game.resource_manager.science_points = data.get("science_points", 0)
+            self.game.resource_manager.unlocked_techs = data.get("unlocked_techs", ["Woodworking"])
+            self.game.resource_manager.job_targets = data.get("job_targets", self.game.resource_manager.job_targets)
             
             # Re-init camera
             from .camera import Camera
@@ -84,7 +108,7 @@ class SaveManager:
             
             self.game.resource_manager.inventory = data["inventory"]
             self.game.resource_manager.pinned_costs = data.get("pinned", [])
-            self.game.resource_manager.code_used = data.get("code_used", False)
+            self.game.resource_manager.used_codes = data.get("used_codes", [])
             
             cam = data["camera"]
             self.game.camera.offset_x = cam["x"]
@@ -97,6 +121,11 @@ class SaveManager:
                 b.level = b_data["level"]
                 b.villagers = b_data.get("villagers", 0)
                 b.production_buffer = b_data.get("buffer", 0)
+                b.production_history = b_data.get("production_history", [0])
+                b.last_day = b_data.get("last_day", 1)
+                b.target_workers = b_data.get("target_workers", b.target_workers)
+                b.buffers = b_data.get("buffers", b.buffers)
+                b.histories = b_data.get("histories", b.histories)
                 self.game.world.buildings[(b_data["x"], b_data["y"])] = b
                 
             self.game.entity_manager.villagers = []
@@ -118,6 +147,8 @@ class SaveManager:
             return True
         except Exception as e:
             print(f"Load Failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def list_saves(self):

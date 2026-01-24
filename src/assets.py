@@ -40,12 +40,13 @@ class Assets:
         self.sprites["Rocket Ship"] = load("rocket_ship.png")
         self.sprites["Farm"] = load("farm.png")
         self.sprites["Garden"] = load("garden.png")
-        self.sprites["Blast Furnace"] = load("blast_furnace.png")
+        self.sprites["Oxygenator"] = load("oxygenator.png")
         self.sprites["Warehouse"] = load("warehouse.png")
         self.sprites["Laboratory"] = load("laboratory.png")
         
         # Entities
         self.sprites["villager"] = load("villager.png")
+        self.sprites["trader"] = load("trader.png")
         
         # UI
         self.sprites["icon_build"] = load("icon_build.png")

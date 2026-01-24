@@ -21,8 +21,9 @@ class Building:
         
         # Specific worker assignments
         self.assigned_workers = [] # List of Villager objects
+        self.robots_assigned = 0
         
-        # Multi-resource support (for Blast Furnace)
+        # Multi-resource support
         self.buffers = {"steel": 0, "copper": 0, "gold": 0, "emerald": 0, "diamond": 0}
         self.histories = {res: [0] for res in self.buffers}
         
@@ -32,7 +33,7 @@ class Building:
         self.boarded_population = 0
         self.game_over_triggered = False
 
-    def record_production(self, amount, current_day, res_type=None):
+    def record_production(self, amount, current_day, res_type=None, overwrite=False):
         # Check for new day
         if current_day > self.last_day:
             self.production_history.append(0)
@@ -47,9 +48,15 @@ class Building:
             self.last_day = current_day
             
         if res_type and res_type in self.histories:
-            self.histories[res_type][-1] += amount
+            if overwrite:
+                self.histories[res_type][-1] = amount
+            else:
+                self.histories[res_type][-1] += amount
         else:
-            self.production_history[-1] += amount
+            if overwrite:
+                self.production_history[-1] = amount
+            else:
+                self.production_history[-1] += amount
 
     @staticmethod
     def get_cost(b_type):
@@ -59,7 +66,7 @@ class Building:
         if b_type == "House": return {"wood": 5, "stone": 5, "iron": 5}
         if b_type == "Farm": return {"iron": 5, "stone": 5, "wood": 5}
         if b_type == "Garden": return {"iron": 15, "stone": 15, "wood": 15, "food": 15}
-        if b_type == "Blast Furnace": return {"iron": 20, "stone": 20, "wood": 10}
+        if b_type == "Oxygenator": return {"wood": 15, "stone": 15, "iron": 15}
         if b_type == "Rocket Ship": return {"wood": 1000, "stone": 1000, "iron": 1000}
         if b_type == "Warehouse": return {"wood": 50, "stone": 50}
         if b_type == "Laboratory": return {"wood": 100, "stone": 100, "iron": 20}
@@ -75,6 +82,7 @@ class Building:
         if self.type == "Mine": return {"iron": 10 * factor}
         if self.type == "House": return {"wood": 10 * factor, "stone": 10 * factor}
         if self.type == "Farm": return {"wood": 10 * factor, "stone": 10 * factor, "iron": 10 * factor}
+        if self.type == "Oxygenator": return {"wood": 20 * factor, "stone": 20 * factor, "iron": 20 * factor}
         if self.type == "Rocket Ship": return {"wood": 200 * factor, "stone": 200 * factor, "iron": 200 * factor}
         if self.type == "Warehouse": return {"wood": 50 * factor, "stone": 50 * factor}
         if self.type == "Laboratory": return {"wood": 100 * factor, "iron": 20 * factor}
@@ -87,8 +95,8 @@ class Building:
         if b_type == "Mine": return (47, 79, 79) # DarkSlateGray
         if b_type == "House": return (255, 215, 0) # Gold
         if b_type == "Farm": return (50, 205, 50) # LimeGreen
+        if b_type == "Oxygenator": return (200, 240, 255) # Light Cyan
         if b_type == "Garden": return (255, 105, 180) # HotPink
-        if b_type == "Blast Furnace": return (70, 70, 70) # DarkGray
         if b_type == "Rocket Ship": return (200, 0, 0) # Red
         if b_type == "Warehouse": return (100, 100, 200) # Slate Blue
         if b_type == "Laboratory": return (200, 200, 255) # Light Blue

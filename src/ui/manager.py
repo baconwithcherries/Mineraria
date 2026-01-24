@@ -18,6 +18,20 @@ class UIManager:
             else:
                 self.active_window = None
 
+    def draw_tooltip(self, screen, text, pos):
+        font = pygame.font.SysFont("Arial", 14)
+        surf = font.render(text, True, (255, 255, 255))
+        padding = 4
+        rect = pygame.Rect(pos[0], pos[1] - 25, surf.get_width() + padding*2, surf.get_height() + padding*2)
+        
+        # Clamp to screen
+        if rect.right > screen.get_width(): rect.right = screen.get_width()
+        if rect.top < 0: rect.top = 0
+        
+        pygame.draw.rect(screen, (50, 50, 50), rect, border_radius=4)
+        pygame.draw.rect(screen, (200, 200, 200), rect, 1, border_radius=4)
+        screen.blit(surf, (rect.x + padding, rect.y + padding))
+
     def handle_input(self, event):
         if self.active_window:
             return self.active_window.handle_input(event)

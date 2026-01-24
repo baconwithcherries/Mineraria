@@ -8,20 +8,22 @@ class HUD:
         self.rm = game.resource_manager
         self.font = pygame.font.SysFont("Arial", 16)
         
-        # Placeholder Icons (Rects)
+        # Icons (Top Left)
         self.build_icon_rect = pygame.Rect(10, 10, 32, 32)
-        self.inventory_icon_rect = pygame.Rect(10, 50, 32, 32)
-        self.jobs_icon_rect = pygame.Rect(10, 90, 32, 32)
+        self.jobs_icon_rect = pygame.Rect(10, 50, 32, 32)
+        self.speed_btn_rect = pygame.Rect(10, 90, 32, 32)
+        
+        # New Inventory List Position (Bottom Right)
+        self.inventory_panel_rect = pygame.Rect(SCREEN_WIDTH - 200, SCREEN_HEIGHT - 220, 190, 210)
         self.code_btn_rect = pygame.Rect(10, SCREEN_HEIGHT - 40, 60, 30)
-        self.exit_btn_rect = pygame.Rect(SCREEN_WIDTH - 110, SCREEN_HEIGHT - 40, 100, 30)
 
     def draw(self, screen):
         assets = Assets.get()
         
         # Update button position for resizing
         self.code_btn_rect.y = screen.get_height() - 40
-        self.exit_btn_rect.x = screen.get_width() - 110
-        self.exit_btn_rect.y = screen.get_height() - 40
+        self.inventory_panel_rect.x = screen.get_width() - 200
+        self.inventory_panel_rect.y = screen.get_height() - 220
         
         # Helper for icon background
         def draw_icon_bg(rect):
@@ -38,33 +40,37 @@ class HUD:
             b_text = self.font.render("B", True, (60, 40, 30))
             screen.blit(b_text, (18, 18))
 
-        # Inventory
-        draw_icon_bg(self.inventory_icon_rect)
-        i_sprite = assets.get_sprite("icon_inventory")
-        if i_sprite:
-            screen.blit(i_sprite, self.inventory_icon_rect)
-        else:
-            i_text = self.font.render("I", True, (60, 40, 30))
-            screen.blit(i_text, (18, 58))
-
         # Jobs
         draw_icon_bg(self.jobs_icon_rect)
         v_sprite = assets.get_sprite("villager")
         if v_sprite:
-            # Scale if needed, but 32x32 is expected
             scaled = pygame.transform.scale(v_sprite, (32, 32))
             screen.blit(scaled, self.jobs_icon_rect)
         else:
             j_text = self.font.render("J", True, (60, 40, 30))
             screen.blit(j_text, (self.jobs_icon_rect.centerx - j_text.get_width()//2, self.jobs_icon_rect.centery - j_text.get_height()//2))
 
-        # Speed Toggle Button (Below Jobs)
-        self.speed_btn_rect = pygame.Rect(10, 130, 32, 32)
+        # Speed Toggle
         draw_icon_bg(self.speed_btn_rect)
-        
         speed_val = self.game.tick_manager.time_scale
         s_text = self.font.render(f"{speed_val}x", True, (60, 40, 30))
         screen.blit(s_text, (self.speed_btn_rect.centerx - s_text.get_width()//2, self.speed_btn_rect.centery - s_text.get_height()//2))
+
+        # Persistent Inventory (Bottom Right)
+        pygame.draw.rect(screen, (100, 110, 130), self.inventory_panel_rect, border_radius=10)
+        pygame.draw.rect(screen, (60, 40, 30), self.inventory_panel_rect, 2, border_radius=10)
+        
+        inv_title = self.font.render("Inventory", True, WHITE)
+        screen.blit(inv_title, (self.inventory_panel_rect.x + 10, self.inventory_panel_rect.y + 10))
+        
+        y_off = 35
+        for res, amount in self.rm.inventory.items():
+            if amount > 0 or res in ["wood", "stone", "iron", "food"]: # Show core items or items player has
+                txt = f"{res.capitalize()}: {int(amount)}"
+                surf = self.font.render(txt, True, WHITE)
+                screen.blit(surf, (self.inventory_panel_rect.x + 15, self.inventory_panel_rect.y + y_off))
+                y_off += 18
+                if y_off > self.inventory_panel_rect.height - 20: break
 
         # Draw Code Button (Bottom Left)
         pygame.draw.rect(screen, (160, 110, 80), self.code_btn_rect, border_radius=5)
@@ -144,9 +150,3 @@ class HUD:
             h_txt = f"Happiness: {int(self.rm.happiness)}%"
             h_surf = self.font.render(h_txt, True, WHITE)
             screen.blit(h_surf, (stat_bg.x + 10, stat_bg.y + 35))
-
-        # Draw Exit Button
-        pygame.draw.rect(screen, (200, 60, 60), self.exit_btn_rect, border_radius=5)
-        pygame.draw.rect(screen, (60, 40, 30), self.exit_btn_rect, 2, border_radius=5)
-        exit_text = self.font.render("EXIT", True, WHITE)
-        screen.blit(exit_text, (self.exit_btn_rect.centerx - exit_text.get_width()//2, self.exit_btn_rect.centery - exit_text.get_height()//2))

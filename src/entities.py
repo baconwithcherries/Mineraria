@@ -53,17 +53,30 @@ class Villager:
             self.vy += 0.01 # Gravity
             self.y += self.vy
 
+        # Safety Check: Falling off the world
+        if self.y > self.game.world.height + 10:
+            if self in self.game.entity_manager.villagers:
+                # Remove from manager
+                self.game.entity_manager.villagers.remove(self)
+                # Remove from building if assigned
+                if self.assigned_building:
+                    if self in self.assigned_building.assigned_workers:
+                        self.assigned_building.assigned_workers.remove(self)
+            return
+
         if not is_grounded:
             return # Falling, don't move X
 
         # 2. AI Logic
         if self.assigned_building:
             # Move towards building
-            dx = self.assigned_building.x - self.x
-            if abs(dx) < 0.5:
+            target_x = self.assigned_building.x + 0.5 # Center of tile
+            dx = target_x - self.x
+            
+            if abs(dx) < 0.2:
                 # Arrived
                 self.state = "WORKING"
-                self.x = self.assigned_building.x # Snap to center
+                self.x = target_x # Snap to center
             else:
                 self.state = "WALK"
                 direction = 1 if dx > 0 else -1
@@ -108,10 +121,39 @@ class Villager:
         else:
             self.x = next_x
 
+class Trader:
+    def __init__(self, game):
+        self.game = game
+        self.active = False
+        self.x = -10
+        self.y = 20 # Sky level
+        self.target_x = 100 # Default, will be updated on spawn
+        self.speed = 0.05
+        self.timer = 0
+        
+    def spawn(self):
+        if self.game.world is None: return
+        self.active = True
+        self.x = -5
+        self.y = 20
+        self.target_x = self.game.world.width + 5
+        
+    def update(self):
+        if not self.active or self.game.world is None: return
+        
+        # Move across screen
+        self.x += self.speed
+        # Bobbing motion
+        self.y = 20 + math.sin(self.x * 0.5) * 2
+        
+        if self.x > self.target_x:
+            self.active = False
+
 class EntityManager:
     def __init__(self, game):
         self.game = game
         self.villagers = []
+        self.trader = Trader(game)
 
     def spawn_villager(self, x, y, job="Unemployed"):
         v = Villager(x, y, self.game, job)
@@ -119,8 +161,12 @@ class EntityManager:
         return v
 
     def update(self):
+        if self.game.world is None:
+            return
+            
         for v in self.villagers:
             v.update()
+        self.trader.update()
 
     def get_count(self):
         return len(self.villagers)
