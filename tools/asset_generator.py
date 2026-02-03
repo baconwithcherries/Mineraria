@@ -259,6 +259,40 @@ def draw_lab(surf, w, h):
     pygame.draw.line(surf, COLORS["METAL_DARK"], (16, 10), (16, 2))
     pygame.draw.ellipse(surf, COLORS["RED"], (14, 0, 4, 4))
 
+def draw_power_plant(surf, w, h):
+    # Concrete industrial base
+    pygame.draw.rect(surf, COLORS["STONE_LIGHT"], (4, 10, 24, 22))
+    pygame.draw.rect(surf, COLORS["STONE_DARK"], (4, 10, 24, 22), 1)
+    
+    # Yellow/Black Hazard Stripes
+    for i in range(0, 24, 6):
+        pygame.draw.line(surf, COLORS["BLACK"], (4+i, 28), (8+i, 32), 2)
+        
+    # Blue energy core window
+    pygame.draw.rect(surf, COLORS["BLUE"], (10, 14, 12, 10))
+    pygame.draw.rect(surf, COLORS["SKY"], (12, 16, 8, 6)) # Inner glow
+    
+    # Antenna / Coil
+    pygame.draw.line(surf, COLORS["METAL_DARK"], (16, 10), (16, 2))
+    pygame.draw.circle(surf, COLORS["SKY"], (16, 2), 2)
+
+def draw_raw_factory(surf, w, h):
+    # Blue-grey metal building body
+    pygame.draw.rect(surf, COLORS["STONE_MID"], (2, 8, 28, 24))
+    pygame.draw.rect(surf, COLORS["STONE_DARK"], (2, 8, 28, 24), 1)
+    # Darker roof with ridges
+    pygame.draw.rect(surf, COLORS["STONE_DARK"], (0, 6, 32, 4))
+    for i in range(0, 32, 4):
+        pygame.draw.line(surf, COLORS["STONE_BLACK"], (i, 6), (i, 10))
+    # Large industrial windows
+    pygame.draw.rect(surf, COLORS["GLASS"], (6, 12, 8, 8)) # Window 1
+    pygame.draw.rect(surf, COLORS["GLASS"], (18, 12, 8, 8)) # Window 2
+    pygame.draw.rect(surf, COLORS["STONE_BLACK"], (6, 12, 8, 8), 1)
+    pygame.draw.rect(surf, COLORS["STONE_BLACK"], (18, 12, 8, 8), 1)
+    # Smokestacks
+    pygame.draw.rect(surf, COLORS["METAL_DARK"], (6, 0, 4, 6))
+    pygame.draw.rect(surf, COLORS["METAL_DARK"], (22, 0, 4, 6))
+
 # --- UI Icons ---
 def draw_icon_build(surf, w, h):
     # Hammer
@@ -320,6 +354,25 @@ def draw_title_bg(surf, w, h):
     pygame.draw.ellipse(surf, COLORS["GRASS_LIGHT"], (150, h-80, 300, 160))
     pygame.draw.ellipse(surf, COLORS["GRASS_MID"], (400, h-120, 300, 170))
 
+def draw_copper_mine(surf, w, h):
+    draw_noise(surf, 2, 10, 28, 22, COLORS["STONE_MID"], COLORS["STONE_DARK"])
+    # Copper veins (shiny metallic orange)
+    for _ in range(5):
+        vx, vy = random.randint(4, 24), random.randint(12, 28)
+        pygame.draw.rect(surf, (184, 115, 51), (vx, vy, 4, 4))
+    # Entrance
+    pygame.draw.rect(surf, COLORS["BLACK"], (12, 20, 8, 12))
+
+def draw_blast_furnace(surf, w, h):
+    # Metal tower
+    pygame.draw.rect(surf, COLORS["STONE_BLACK"], (6, 4, 20, 28))
+    pygame.draw.rect(surf, COLORS["METAL_DARK"], (6, 4, 20, 28), 1)
+    # Heat glow
+    pygame.draw.rect(surf, COLORS["LAVA_MID"], (10, 22, 12, 6))
+    # Piping
+    pygame.draw.rect(surf, COLORS["METAL_MID"], (2, 10, 4, 4))
+    pygame.draw.rect(surf, COLORS["METAL_MID"], (26, 18, 4, 4))
+
 def generate_all():
     random.seed(42) # Consistent noise
     
@@ -332,6 +385,10 @@ def generate_all():
     create_image("logging_workshop.png", (32, 32), draw_logging)
     create_image("stone_refinery.png", (32, 32), draw_refinery)
     create_image("mine.png", (32, 32), draw_mine)
+    create_image("copper_mine.png", (32, 32), draw_copper_mine)
+    create_image("blast_furnace.png", (32, 32), draw_blast_furnace)
+    create_image("power_plant.png", (32, 32), draw_power_plant)
+    create_image("raw_material_factory.png", (32, 32), draw_raw_factory)
     create_image("house.png", (32, 32), draw_house)
     create_image("rocket_ship.png", (32, 32), draw_rocket)
     create_image("farm.png", (32, 32), draw_farm)

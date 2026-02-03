@@ -11,6 +11,7 @@ class TitleScreen:
         self.font_small = pygame.font.SysFont("Arial", 18)
         
         self.state = "MAIN" # MAIN, NEW_NAME, NEW_SIZE, LOAD
+        self.scroll_y = 0
         
         # New Game Input
         self.world_name_input = ""
@@ -41,6 +42,7 @@ class TitleScreen:
                 elif buttons["load"].collidepoint(event.pos):
                     self.saves = self.game.save_manager.list_saves()
                     self.state = "LOAD"
+                    self.scroll_y = 0
                 elif buttons["exit"].collidepoint(event.pos):
                     pygame.quit()
                     sys.exit()
@@ -70,14 +72,50 @@ class TitleScreen:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.state = "MAIN"
+            
+            if event.type == pygame.MOUSEWHEEL:
+                self.scroll_y += event.y * 20
+                # Clamp scroll
+                content_height = len(self.saves) * 45
+                # Viewport height is approx 300
+                min_scroll = -max(0, content_height - 300)
+                self.scroll_y = max(min_scroll, min(0, self.scroll_y))
+            
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 sw, sh = self.game.screen.get_size()
-                for i, save in enumerate(self.saves):
-                    rect = pygame.Rect(sw//2 - 150, sh//2 - 100 + i*45, 300, 40)
-                    if rect.collidepoint(event.pos):
-                        if self.game.save_manager.load_game(save):
-                            self.game.state = STATE_GAME
-                            self.game.assets.play_music("ambiente-mineraria.mp3")
+                
+                # Check bounds of list area to avoid clicking hidden items if not clipping input
+                # But visual clipping is handled in draw. 
+                # Let's just check y positions.
+                
+                list_start_y = sh//2 - 100
+                clip_rect = pygame.Rect(sw//2 - 200, list_start_y, 400, 300)
+                
+                if clip_rect.collidepoint(event.pos):
+                    for i, save in enumerate(self.saves):
+                        y_pos = list_start_y + i*45 + self.scroll_y
+                        
+                        # Optimization: Skip if out of view
+                        if y_pos < list_start_y - 45 or y_pos > list_start_y + 300:
+                            continue
+                            
+                        # Load Button (Left part)
+                        load_rect = pygame.Rect(sw//2 - 150, y_pos, 260, 40)
+                        # Delete Button (Right part)
+                        del_rect = pygame.Rect(sw//2 + 120, y_pos, 30, 40)
+                        
+                        if load_rect.collidepoint(event.pos):
+                            if self.game.save_manager.load_game(save):
+                                self.game.state = STATE_GAME
+                                self.game.assets.play_music("ambiente-mineraria.mp3")
+                        elif del_rect.collidepoint(event.pos):
+                             self.game.save_manager.delete_save(save)
+                             self.saves = self.game.save_manager.list_saves()
+                             # Re-clamp scroll if list shrank
+                             content_height = len(self.saves) * 45
+                             min_scroll = -max(0, content_height - 300)
+                             self.scroll_y = max(min_scroll, min(0, self.scroll_y))
+                             break # Break loop after modifying list
 
     def draw(self, screen):
         sw, sh = screen.get_size()
@@ -134,12 +172,29 @@ class TitleScreen:
                 err = self.font_small.render("No saves found", True, (200, 100, 100))
                 screen.blit(err, (sw//2 - err.get_width()//2, sh//2))
             
+            # Viewport for clipping
+            list_start_y = sh//2 - 100
+            viewport_rect = pygame.Rect(0, list_start_y, sw, 300)
+            screen.set_clip(viewport_rect)
+            
             for i, save in enumerate(self.saves):
-                rect = pygame.Rect(sw//2 - 150, sh//2 - 100 + i*45, 300, 40)
+                y_pos = list_start_y + i*45 + self.scroll_y
+                
+                # Load Button
+                rect = pygame.Rect(sw//2 - 150, y_pos, 260, 40)
                 pygame.draw.rect(screen, (80, 80, 80), rect)
                 pygame.draw.rect(screen, WHITE, rect, 1)
                 stxt = self.font_med.render(save, True, WHITE)
-                screen.blit(stxt, (rect.centerx - stxt.get_width()//2, rect.centery - stxt.get_height()//2))
+                screen.blit(stxt, (rect.x + 10, rect.centery - stxt.get_height()//2))
+                
+                # Delete Button
+                del_rect = pygame.Rect(sw//2 + 120, y_pos, 30, 40)
+                pygame.draw.rect(screen, (150, 50, 50), del_rect)
+                pygame.draw.rect(screen, WHITE, del_rect, 1)
+                dtxt = self.font_med.render("X", True, WHITE)
+                screen.blit(dtxt, (del_rect.centerx - dtxt.get_width()//2, del_rect.centery - dtxt.get_height()//2))
+            
+            screen.set_clip(None) # Disable clipping
             
             hint = self.font_small.render("Press ESC to go back", True, (200, 200, 200))
-            screen.blit(hint, (sw//2 - hint.get_width()//2, sh//2 + 200))
+            screen.blit(hint, (sw//2 - hint.get_width()//2, sh//2 + 220))

@@ -7,7 +7,7 @@ from .camera import Camera
 from .resources import ResourceManager
 from .ui.hud import HUD
 from .ui.manager import UIManager
-from .ui.windows import BuildingInspector, BuildingTab, InventoryWindow, RocketWindow, EndGameWindow, CodeWindow, TutorialPrompt, TutorialWindow, ExitConfirmationWindow, WorkerAssignmentWindow, ResearchWindow, TraderWindow, LaboratoryInspector
+from .ui.windows import BuildingInspector, BuildingTab, InventoryWindow, RocketWindow, EndGameWindow, CodeWindow, TutorialPrompt, TutorialWindow, ExitConfirmationWindow, WorkerAssignmentWindow, ResearchWindow, TraderWindow, ItemCodexWindow
 from .ui.title_screen import TitleScreen
 from .input_handler import InputHandler
 from .entities import EntityManager
@@ -158,7 +158,17 @@ class Game:
                 return
 
         if event.type == pygame.MOUSEWHEEL:
-            self.camera.set_zoom(event.y * 0.1)
+            mx, my = pygame.mouse.get_pos()
+            if self.hud.inventory_panel_rect.collidepoint(mx, my):
+                self.hud.inventory_scroll_y += event.y * 20
+                # Clamp scroll
+                max_scroll = 0
+                # Content height minus panel height (minus title space)
+                visible_h = self.hud.inventory_panel_rect.height - 35
+                min_scroll = -(max(0, self.hud.inventory_content_height - visible_h + 20))
+                self.hud.inventory_scroll_y = max(min_scroll, min(max_scroll, self.hud.inventory_scroll_y))
+            else:
+                self.camera.set_zoom(event.y * 0.1)
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button in (4, 5): return
@@ -180,6 +190,10 @@ class Game:
                     else:
                         self.tick_manager.time_scale = 1
                     return
+                elif self.hud.codex_icon_rect.collidepoint(event.pos):
+                    self.ui_manager.windows = []
+                    self.ui_manager.open_window(ItemCodexWindow(self.resource_manager))
+                    return
                 elif self.hud.code_btn_rect.collidepoint(event.pos):
                     self.ui_manager.windows = []
                     self.ui_manager.open_window(CodeWindow(self.resource_manager))
@@ -195,8 +209,6 @@ class Game:
                     self.ui_manager.windows = [] # Clear existing windows
                     if building.type == "Rocket Ship":
                         self.ui_manager.open_window(RocketWindow(building, self.resource_manager, self.entity_manager, self))
-                    elif building.type == "Laboratory":
-                        self.ui_manager.open_window(LaboratoryInspector(building, self.resource_manager, self.world, self))
                     else:
                         self.ui_manager.open_window(BuildingInspector(building, self.resource_manager, self.world, self))
                     return
@@ -427,6 +439,7 @@ class Game:
         if self.hud.build_icon_rect.collidepoint(mx, my): tooltip = "Construction (B)"
         elif self.hud.jobs_icon_rect.collidepoint(mx, my): tooltip = "Worker Management"
         elif self.hud.speed_btn_rect.collidepoint(mx, my): tooltip = "Toggle Speed (1x/10x)"
+        elif self.hud.codex_icon_rect.collidepoint(mx, my): tooltip = "Item Codex"
         elif self.hud.code_btn_rect.collidepoint(mx, my): tooltip = "Redeem Codes"
         
         if tooltip:

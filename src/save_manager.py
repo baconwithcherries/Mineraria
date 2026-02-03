@@ -49,7 +49,8 @@ class SaveManager:
                 "last_day": b.last_day,
                 "target_workers": b.target_workers,
                 "buffers": b.buffers,
-                "histories": b.histories
+                "histories": b.histories,
+                "is_on": b.is_on
             }
             data["buildings"].append(b_data)
             
@@ -106,7 +107,8 @@ class SaveManager:
             from .camera import Camera
             self.game.camera = Camera(self.game.world.width * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE)
             
-            self.game.resource_manager.inventory = data["inventory"]
+            # Merge saved inventory with default (fixes missing keys like 'material_parts')
+            self.game.resource_manager.inventory.update(data["inventory"])
             self.game.resource_manager.pinned_costs = data.get("pinned", [])
             self.game.resource_manager.used_codes = data.get("used_codes", [])
             
@@ -126,6 +128,7 @@ class SaveManager:
                 b.target_workers = b_data.get("target_workers", b.target_workers)
                 b.buffers = b_data.get("buffers", b.buffers)
                 b.histories = b_data.get("histories", b.histories)
+                b.is_on = b_data.get("is_on", True)
                 self.game.world.buildings[(b_data["x"], b_data["y"])] = b
                 
             self.game.entity_manager.villagers = []
@@ -150,6 +153,17 @@ class SaveManager:
             import traceback
             traceback.print_exc()
             return False
+
+    def delete_save(self, world_name):
+        path = self.get_save_path(world_name)
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                print(f"Deleted save: {world_name}")
+                return True
+            except Exception as e:
+                print(f"Failed to delete save: {e}")
+        return False
 
     def list_saves(self):
         saves = []

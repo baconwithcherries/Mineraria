@@ -21,7 +21,6 @@ class Building:
         
         # Specific worker assignments
         self.assigned_workers = [] # List of Villager objects
-        self.robots_assigned = 0
         
         # Multi-resource support
         self.buffers = {"steel": 0, "copper": 0, "gold": 0, "emerald": 0, "diamond": 0}
@@ -32,6 +31,7 @@ class Building:
         self.launch_y_offset = 0
         self.boarded_population = 0
         self.game_over_triggered = False
+        self.is_on = True # Toggleable state
 
     def record_production(self, amount, current_day, res_type=None, overwrite=False):
         # Check for new day
@@ -68,8 +68,13 @@ class Building:
         if b_type == "Garden": return {"iron": 15, "stone": 15, "wood": 15, "food": 15}
         if b_type == "Oxygenator": return {"wood": 15, "stone": 15, "iron": 15}
         if b_type == "Rocket Ship": return {"wood": 1000, "stone": 1000, "iron": 1000}
-        if b_type == "Warehouse": return {"wood": 50, "stone": 50}
+        if b_type == "Warehouse": return {"wood": 200, "stone": 200, "iron": 200}
         if b_type == "Laboratory": return {"wood": 100, "stone": 100, "iron": 20}
+        if b_type == "Raw Material Factory": return {"stone": 25, "iron": 25, "science": 100}
+        if b_type == "Copper Mine": return {"wood": 50, "stone": 50}
+        if b_type == "Blast Furnace": return {"stone": 100, "iron": 50, "science": 150}
+        if b_type == "Power Plant": return {"wood": 250, "stone": 250, "iron": 250, "science": 300}
+        if b_type == "Advanced Machine Factory": return {"iron": 200, "copper": 100, "science": 250}
         return {}
 
     def get_upgrade_cost(self):
@@ -86,6 +91,11 @@ class Building:
         if self.type == "Rocket Ship": return {"wood": 200 * factor, "stone": 200 * factor, "iron": 200 * factor}
         if self.type == "Warehouse": return {"wood": 50 * factor, "stone": 50 * factor}
         if self.type == "Laboratory": return {"wood": 100 * factor, "iron": 20 * factor}
+        if self.type == "Raw Material Factory": return {"stone": 25 * factor, "iron": 25 * factor}
+        if self.type == "Copper Mine": return {"wood": 50 * factor, "stone": 50 * factor}
+        if self.type == "Blast Furnace": return {"stone": 100 * factor, "iron": 50 * factor}
+        if self.type == "Power Plant": return {"wood": 250 * factor, "stone": 250 * factor, "iron": 250 * factor}
+        if self.type == "Advanced Machine Factory": return {"iron": 200 * factor, "copper": 100 * factor}
         return {}
 
     @staticmethod
@@ -100,6 +110,11 @@ class Building:
         if b_type == "Rocket Ship": return (200, 0, 0) # Red
         if b_type == "Warehouse": return (100, 100, 200) # Slate Blue
         if b_type == "Laboratory": return (200, 200, 255) # Light Blue
+        if b_type == "Raw Material Factory": return (255, 140, 0) # Dark Orange
+        if b_type == "Copper Mine": return (184, 115, 51) # Copper color
+        if b_type == "Blast Furnace": return (70, 70, 70) # Dark Charcoal
+        if b_type == "Power Plant": return (255, 255, 100) # Bright Yellow
+        if b_type == "Advanced Machine Factory": return (100, 100, 150) # Dark Steel Blue
         return (255, 0, 255)
 
 class Tile:

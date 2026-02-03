@@ -54,27 +54,27 @@ class BuildingInspector(Window):
         self.world = world
         self.game = game
         
-        self.collect_btn = pygame.Rect(self.rect.x + 100, self.rect.y + 360, 200, 30)
         self.upgrade_btn = pygame.Rect(self.rect.x + 350, self.rect.y + 5, 20, 20)
         self.delete_btn = pygame.Rect(self.rect.x + self.rect.width - 40, self.rect.y + self.rect.height - 40, 30, 30)
+        self.research_btn = pygame.Rect(self.rect.x + 100, self.rect.y + 360, 200, 30)
 
     def draw(self, screen):
         super().draw(screen)
         
         # Stats
         rtype = "Resources"
-        show_collect = True
         if self.building.type == "Logging Workshop": rtype = "Wood"
         elif self.building.type == "Stone Refinery": rtype = "Stone"
         elif self.building.type == "Mine": rtype = "Iron"
+        elif self.building.type == "Copper Mine": rtype = "Copper"
+        elif self.building.type == "Power Plant": rtype = "Batteries"
+        elif self.building.type == "Advanced Machine Factory": rtype = "Wiring"
         elif self.building.type == "Oxygenator": rtype = "Oxygen"
         elif self.building.type in ["Farm", "Garden"]: rtype = "Food"
         elif self.building.type == "Laboratory": 
             rtype = "Science"
-            show_collect = False
         elif self.building.type == "Warehouse":
             rtype = "Storage"
-            show_collect = False
         
         assigned = len(self.building.assigned_workers) 
         
@@ -83,142 +83,147 @@ class BuildingInspector(Window):
         else:
             if self.building.type == "Laboratory":
                 stats = f"Science Gen: {self.building.production_buffer:.2f}"
+            elif self.building.type == "Raw Material Factory":
+                stats = f"Parts: {int(self.building.production_buffer)}"
+            elif self.building.type == "Power Plant":
+                stats = f"Batteries: {int(self.building.production_buffer)}"
+                i_txt = self.font.render("Consumes Wiring from Inventory", True, (50, 50, 50))
+                screen.blit(i_txt, (self.rect.x + 20, self.rect.y + 330))
+            elif self.building.type == "Advanced Machine Factory":
+                stats = f"Wiring: {int(self.building.production_buffer)}"
+                i_txt = self.font.render("Consumes Copper from Inventory", True, (50, 50, 50))
+                screen.blit(i_txt, (self.rect.x + 20, self.rect.y + 330))
+            elif self.building.type == "Blast Furnace":
+                stats = f"Steel: {int(self.building.production_buffer)}"
+                
+                # Draw Power Status
+                has_power = self.rm.inventory.get("batteries", 0) >= (15.0/60.0)
+                p_col = (50, 50, 50) if has_power else (200, 50, 50)
+                p_status = "POWERED" if has_power else "NO POWER (Needs Batteries)"
+                p_txt = self.font.render(p_status, True, p_col)
+                screen.blit(p_txt, (self.rect.x + 20, self.rect.y + 310))
+            elif self.building.type == "Warehouse":
+                assigned = len(self.building.assigned_workers)
+                status = "ACTIVE" if assigned >= 3 else "INACTIVE (Needs 3 Workers)"
+                stats = f"Effect: +10% Production ({status})"
             else:
                 stats = f"{rtype}: {int(self.building.production_buffer)}"
+                
+                if self.building.type == "Copper Mine":
+                    has_power = self.rm.inventory.get("batteries", 0) >= (15.0/60.0)
+                    p_col = (50, 50, 50) if has_power else (200, 50, 50)
+                    p_status = "POWERED" if has_power else "NO POWER (Needs Batteries)"
+                    p_txt = self.font.render(p_status, True, p_col)
+                    screen.blit(p_txt, (self.rect.x + 20, self.rect.y + 310))
+            
             # Worker count display
             max_workers = 3 * self.building.level
             w_txt = self.font.render(f"Workers: {assigned}/{max_workers}", True, BLACK)
             screen.blit(w_txt, (self.rect.x + 20, self.rect.y + 400))
-            
-            # Robot controls
-            r_txt = self.font.render(f"Robots: {self.building.robots_assigned}", True, (0, 50, 150))
-            screen.blit(r_txt, (self.rect.x + 200, self.rect.y + 400))
-            
-            self.robot_minus_btn = pygame.Rect(self.rect.x + 280, self.rect.y + 400, 25, 25)
-            self.robot_plus_btn = pygame.Rect(self.rect.x + 315, self.rect.y + 400, 25, 25)
-            
-            pygame.draw.rect(screen, (100, 100, 100), self.robot_minus_btn, border_radius=5)
-            pygame.draw.rect(screen, (100, 100, 100), self.robot_plus_btn, border_radius=5)
-            screen.blit(self.font.render("-", True, WHITE), (self.robot_minus_btn.centerx - 4, self.robot_minus_btn.centery - 10))
-            screen.blit(self.font.render("+", True, WHITE), (self.robot_plus_btn.centerx - 6, self.robot_plus_btn.centery - 10))
-            
+
+            if self.building.type == "Raw Material Factory":
+                 i_txt = self.font.render("Consumes Stone, Iron + Copper from Inventory", True, (50, 50, 50))
+                 screen.blit(i_txt, (self.rect.x + 20, self.rect.y + 330))
+
+            elif self.building.type in ["Blast Furnace", "Power Plant", "Advanced Machine Factory"]:
+                 if self.building.type == "Blast Furnace":
+                    stats = f"Steel: {int(self.building.production_buffer)}"
+                    i_txt = self.font.render("Consumes Wood + Iron from Inventory", True, (50, 50, 50))
+                    screen.blit(i_txt, (self.rect.x + 20, self.rect.y + 330))
+                 
+                 # Toggle Button
+                 self.toggle_btn = pygame.Rect(self.rect.x + 20, self.rect.y + 360, 100, 30)
+                 btn_col = (100, 200, 100) if self.building.is_on else (200, 100, 100)
+                 pygame.draw.rect(screen, btn_col, self.toggle_btn, border_radius=5)
+                 pygame.draw.rect(screen, (60, 40, 30), self.toggle_btn, 2, border_radius=5)
+                 
+                 status_txt = "Status: ON" if self.building.is_on else "Status: OFF"
+                 stxt = self.font.render(status_txt, True, WHITE)
+                 screen.blit(stxt, (self.toggle_btn.centerx - stxt.get_width()//2, self.toggle_btn.centery - stxt.get_height()//2))
+                 
+            elif self.building.type == "Laboratory":
+                 pygame.draw.rect(screen, (100, 100, 200), self.research_btn, border_radius=5)
+                 pygame.draw.rect(screen, (60, 40, 30), self.research_btn, 2, border_radius=5)
+                 rtxt = self.font.render("Open Research Tree", True, WHITE)
+                 screen.blit(rtxt, (self.research_btn.centerx - rtxt.get_width()//2, self.research_btn.centery - rtxt.get_height()//2))
+
         text = self.font.render(stats, True, BLACK)
         screen.blit(text, (self.rect.x + 20, self.rect.y + 40))
         
-        # Graph area
-        graph_rect = pygame.Rect(self.rect.x + 20, self.rect.y + 70, 360, 150)
-        # Light background similar to reference
-        pygame.draw.rect(screen, (235, 225, 205), graph_rect) # Lighter Beige
-        pygame.draw.rect(screen, (60, 40, 30), graph_rect, 2) # Dark Brown Border
-        
-        history = self.building.production_history
-        max_val = max(history) if max(history) > 0 else 10
-        # Round up to next multiple of 5
-        max_val = math.ceil(max_val / 5) * 5
-        max_val = max(max_val, 5)
+        # Graph area (Hide for Warehouse as it doesn't produce resources)
+        if self.building.type != "Warehouse":
+            graph_rect = pygame.Rect(self.rect.x + 20, self.rect.y + 70, 360, 150)
+            pygame.draw.rect(screen, (235, 225, 205), graph_rect) # Lighter Beige
+            pygame.draw.rect(screen, (60, 40, 30), graph_rect, 2) # Dark Brown Border
+            
+            history = self.building.production_history
+            max_val = max(history) if max(history) > 0 else 10
+            max_val = math.ceil(max_val / 5) * 5
+            max_val = max(max_val, 5)
 
-        # Draw grid lines & Y-axis labels
-        steps = 5
-        for i in range(steps + 1):
-            val = (max_val / steps) * i
-            y_pos = graph_rect.bottom - ((val / max_val) * graph_rect.height)
-            
-            # Grid line
-            if i > 0:
-                pygame.draw.line(screen, (200, 190, 170), (graph_rect.x, y_pos), (graph_rect.right, y_pos), 1)
-            
-            # Label
-            label = self.font.render(str(int(val)), True, (60, 40, 30))
-            screen.blit(label, (graph_rect.x + 5, y_pos - 10))
+            # Draw grid lines & Y-axis labels
+            steps = 5
+            for i in range(steps + 1):
+                val = (max_val / steps) * i
+                y_pos = graph_rect.bottom - ((val / max_val) * graph_rect.height)
+                if i > 0:
+                    pygame.draw.line(screen, (200, 190, 170), (graph_rect.x, y_pos), (graph_rect.right, y_pos), 1)
+                label = self.font.render(str(int(val)), True, (60, 40, 30))
+                screen.blit(label, (graph_rect.x + 5, y_pos - 10))
 
-        # Draw bars
-        # Fixed 7-day layout
-        max_days = 7
-        bar_width = graph_rect.width / max_days
-        
-        # Calculate where to start drawing (right-aligned)
-        # history[-1] is Today -> Slot 6 (index max_days-1)
-        # start_slot ensures the last item lands in the last slot
-        start_slot = max_days - len(history)
-        
-        for i, val in enumerate(history):
-            slot = start_slot + i
-            if slot < 0: continue # Should not happen with len <= 7 logic
+            # Draw bars
+            max_days = 7
+            bar_width = graph_rect.width / max_days
+            start_slot = max_days - len(history)
             
-            h = (val / max_val) * graph_rect.height
-            x = graph_rect.x + (slot * bar_width)
-            y = graph_rect.y + graph_rect.height - h
-            
-            # Blue bars (Reference uses Green/Blue line, let's stick to Blue or change to Green)
-            # Reference image graph has Green line. Let's use Green bars to match "Materials Produced".
-            bar_rect = pygame.Rect(x, y, max(1, bar_width - 4), h) 
-            pygame.draw.rect(screen, (80, 160, 80), bar_rect) # Greenish bars
+            for i, val in enumerate(history):
+                slot = start_slot + i
+                if slot < 0: continue
+                h = (val / max_val) * graph_rect.height
+                x = graph_rect.x + (slot * bar_width)
+                y = graph_rect.y + graph_rect.height - h
+                bar_rect = pygame.Rect(x, y, max(1, bar_width - 4), h) 
+                pygame.draw.rect(screen, (80, 160, 80), bar_rect) # Greenish bars
 
-            # Date Labels
-            days_ago = len(history) - 1 - i
-            if days_ago == 0:
-                lbl_text = "Today"
-            elif days_ago == 1:
-                lbl_text = "Yesterday"
-            else:
-                lbl_text = f"{days_ago} days ago"
-            
-            lbl = self.font.render(lbl_text, True, (60, 40, 30))
-            rotated_lbl = pygame.transform.rotate(lbl, 90)
-            
-            # Position centered under bar
-            lbl_x = x + (bar_width / 2) - (rotated_lbl.get_width() / 2)
-            lbl_y = graph_rect.bottom + 5
-            
-            # Only draw if it fits within the window bounds roughly
-            if lbl_y + rotated_lbl.get_height() < self.rect.bottom - 5:
-                    screen.blit(rotated_lbl, (lbl_x, lbl_y))
-            elif days_ago == 0: # Always try to show Today
-                    screen.blit(rotated_lbl, (lbl_x, lbl_y))
+                days_ago = len(history) - 1 - i
+                lbl_text = "Today" if days_ago == 0 else ("Yesterday" if days_ago == 1 else f"{days_ago} days ago")
+                lbl = self.font.render(lbl_text, True, (60, 40, 30))
+                rotated_lbl = pygame.transform.rotate(lbl, 90)
+                lbl_x = x + (bar_width / 2) - (rotated_lbl.get_width() / 2)
+                lbl_y = graph_rect.bottom + 5
+                if lbl_y + rotated_lbl.get_height() < self.rect.bottom - 5:
+                        screen.blit(rotated_lbl, (lbl_x, lbl_y))
+                elif days_ago == 0:
+                        screen.blit(rotated_lbl, (lbl_x, lbl_y))
         
-        # Collect Button
-        if show_collect and self.building.type != "House":
-            pygame.draw.rect(screen, (160, 110, 80), self.collect_btn, border_radius=5)
-            pygame.draw.rect(screen, (60, 40, 30), self.collect_btn, 2, border_radius=5)
-            c_text = self.font.render("Collect", True, WHITE)
-            screen.blit(c_text, (self.collect_btn.centerx - c_text.get_width()//2, self.collect_btn.centery - c_text.get_height()//2))
-
         # Upgrade Icon
         assets = Assets.get()
         arrow = assets.get_sprite("icon_arrow_up")
-        
         pygame.draw.rect(screen, (160, 110, 80), self.upgrade_btn, border_radius=5)
         pygame.draw.rect(screen, (60, 40, 30), self.upgrade_btn, 2, border_radius=5)
         if arrow:
-            dest = (self.upgrade_btn.x + 2, self.upgrade_btn.y + 2)
-            screen.blit(arrow, dest)
+            screen.blit(arrow, (self.upgrade_btn.x + 2, self.upgrade_btn.y + 2))
             
         # Delete Button (Trash Can)
         pygame.draw.rect(screen, (200, 60, 60), self.delete_btn, border_radius=5)
         pygame.draw.rect(screen, (60, 40, 30), self.delete_btn, 2, border_radius=5)
-        trash_text = self.font.render("DEL", True, WHITE) # Placeholder for trash icon
+        trash_text = self.font.render("DEL", True, WHITE)
         screen.blit(trash_text, (self.delete_btn.x + 2, self.delete_btn.y + 5))
 
     def handle_input(self, event):
         res = super().handle_input(event)
-        if res == "CLOSE": return "CLOSE"
+        if res: return res
         
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.collect_btn.collidepoint(event.pos):
-                if self.building.production_buffer >= 1:
-                    rtype = ""
-                    if self.building.type == "Logging Workshop": rtype = "wood"
-                    elif self.building.type == "Stone Refinery": rtype = "stone"
-                    elif self.building.type == "Mine": rtype = "iron"
-                    elif self.building.type == "Oxygenator": rtype = "oxygen"
-                    elif self.building.type in ["Farm", "Garden"]: rtype = "food"
-                    
-                    if rtype:
-                        amount = int(self.building.production_buffer)
-                        self.rm.add_resource(rtype, amount)
-                        self.building.production_buffer -= amount
+            if self.building.type == "Laboratory" and self.research_btn.collidepoint(event.pos):
+                self.game.ui_manager.open_window(ResearchWindow(self.rm, self.world))
                 return "HANDLED"
-            
+
+            if self.building.type in ["Blast Furnace", "Power Plant", "Advanced Machine Factory"]:
+                if hasattr(self, 'toggle_btn') and self.toggle_btn.collidepoint(event.pos):
+                    self.building.is_on = not self.building.is_on
+                    return "HANDLED"
+
             if self.upgrade_btn.collidepoint(event.pos):
                 if self.building.level < 100:
                     cost = self.building.get_upgrade_cost()
@@ -226,119 +231,84 @@ class BuildingInspector(Window):
                         self.rm.deduct_resources(cost)
                         self.building.level += 1
                         self.title = f"{self.building.type} (Lvl {self.building.level})"
-                        # Update worker target if it was set to old max (3 * old_level)
-                        # Actually, target_workers is manually set now or defaults on init.
-                        # If we upgrade, capacity increases (3 * new_level).
-                        # We should probably increase target_workers automatically if it was maxed?
-                        # Or just leave it to the user. The user can adjust max in the assignment window.
-                        pass
                 return "HANDLED"
                 
             if self.delete_btn.collidepoint(event.pos):
-                # Delete Building and Refund
                 cost = Building.get_cost(self.building.type)
                 for res, amount in cost.items():
                     self.rm.add_resource(res, amount)
                 self.world.buildings.pop((self.building.x, self.building.y))
                 return "CLOSE"
-            
-            if hasattr(self, 'robot_minus_btn') and self.robot_minus_btn.collidepoint(event.pos):
-                if self.building.robots_assigned > 0:
-                    self.building.robots_assigned -= 1
-                    self.rm.inventory["robots"] = self.rm.inventory.get("robots", 0) + 1
-                return "HANDLED"
-            
-            if hasattr(self, 'robot_plus_btn') and self.robot_plus_btn.collidepoint(event.pos):
-                if self.rm.inventory.get("robots", 0) > 0:
-                    current_total = len(self.building.assigned_workers) + self.building.robots_assigned
-                    if current_total < 3 * self.building.level:
-                        self.building.robots_assigned += 1
-                        self.rm.inventory["robots"] -= 1
-                return "HANDLED"
-            
-            if hasattr(self, 'minus_btn') and self.minus_btn.collidepoint(event.pos):
-                pass # Removed
-                return "HANDLED"
-            
-            if hasattr(self, 'plus_btn') and self.plus_btn.collidepoint(event.pos):
-                pass # Removed
-                return "HANDLED"
         return None
 
 class ResearchWindow(Window):
-    def __init__(self, resource_manager):
+    def __init__(self, resource_manager, world):
         cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
         w, h = 500, 400
         super().__init__(cx - w//2, cy - h//2, w, h, "Research Lab")
         self.rm = resource_manager
+        self.world = world
         
-        # Tech Tree: Name, Cost, Description, ID
         self.techs = [
             {"name": "Advanced Architecture", "cost": 100, "desc": "Unlocks Warehouse", "id": "Advanced Architecture"},
             {"name": "Botany", "cost": 75, "desc": "Unlocks Garden", "id": "Botany"},
             {"name": "Life Support", "cost": 150, "desc": "Unlocks Oxygenator", "id": "Life Support"},
+            {"name": "Factory Automation", "cost": 100, "desc": "Unlocks Raw Material Factory", "id": "Factory Automation"},
+            {"name": "Advanced Metallurgy", "cost": 150, "desc": "Unlocks Blast Furnace", "id": "Advanced Metallurgy"},
+            {"name": "Electronics", "cost": 200, "desc": "Unlocks Wiring Recipe", "id": "Electronics"},
+            {"name": "Power Generation", "cost": 300, "desc": "Unlocks Power Plant", "id": "Power Generation"},
+            {"name": "Advanced Engineering", "cost": 250, "desc": "Unlocks Advanced Machine Factory", "id": "Advanced Engineering"},
             {"name": "Aerospace Engineering", "cost": 500, "desc": "Unlocks Rocket Ship", "id": "Aerospace Engineering"}
         ]
-        
         self.unlock_buttons = []
 
     def draw(self, screen):
         super().draw(screen)
         
-        # Header: Science Points
+        # Clipping area for content
+        content_rect = pygame.Rect(self.rect.x + 2, self.rect.y + 70, self.rect.width - 4, self.rect.height - 72)
+        content_surf = pygame.Surface((content_rect.width, content_rect.height), pygame.SRCALPHA)
+        
         points = int(self.rm.science_points)
         s_txt = self.font.render(f"Science Points: {points}", True, (50, 50, 150))
         screen.blit(s_txt, (self.rect.x + 20, self.rect.y + 40))
         
         self.unlock_buttons = []
-        y_pos = self.rect.y + 70
-        
+        y_pos = self.scroll_y
         for tech in self.techs:
-            # Box
-            box_rect = pygame.Rect(self.rect.x + 20, y_pos, self.rect.width - 40, 60)
+            box_rect = pygame.Rect(20, y_pos, self.rect.width - 40, 60)
             is_unlocked = tech["id"] in self.rm.unlocked_techs
-            
             color = (200, 255, 200) if is_unlocked else (220, 220, 220)
-            pygame.draw.rect(screen, color, box_rect)
-            pygame.draw.rect(screen, BLACK, box_rect, 1)
-            
-            # Text
-            name_surf = self.font.render(tech["name"], True, BLACK)
-            desc_surf = self.font.render(tech["desc"], True, (50, 50, 50))
-            cost_surf = self.font.render(f"Cost: {tech['cost']}", True, (100, 50, 50))
-            
-            screen.blit(name_surf, (box_rect.x + 10, box_rect.y + 5))
-            screen.blit(desc_surf, (box_rect.x + 10, box_rect.y + 25))
+            pygame.draw.rect(content_surf, color, box_rect)
+            pygame.draw.rect(content_surf, BLACK, box_rect, 1)
+            content_surf.blit(self.font.render(tech["name"], True, BLACK), (box_rect.x + 10, box_rect.y + 5))
+            content_surf.blit(self.font.render(tech["desc"], True, (50, 50, 50)), (box_rect.x + 10, box_rect.y + 25))
             
             if not is_unlocked:
-                screen.blit(cost_surf, (box_rect.x + 10, box_rect.y + 40))
-                
-                # Unlock Button
+                content_surf.blit(self.font.render(f"Cost: {tech['cost']}", True, (100, 50, 50)), (box_rect.x + 10, box_rect.y + 40))
                 btn_rect = pygame.Rect(box_rect.right - 80, box_rect.y + 15, 70, 30)
-                can_afford = self.rm.science_points >= tech["cost"]
+                btn_color = (100, 160, 100) if self.rm.science_points >= tech["cost"] else (150, 150, 150)
+                pygame.draw.rect(content_surf, btn_color, btn_rect, border_radius=5)
+                pygame.draw.rect(content_surf, (60, 40, 30), btn_rect, 2, border_radius=5)
+                btxt = self.font.render("Unlock", True, WHITE)
+                content_surf.blit(btxt, (btn_rect.centerx - btxt.get_width()//2, btn_rect.centery - btxt.get_height()//2))
                 
-                if can_afford:
-                    btn_color = (100, 160, 100) # Greenish
-                else:
-                    btn_color = (150, 150, 150) # Grey
-                
-                pygame.draw.rect(screen, btn_color, btn_rect, border_radius=5)
-                pygame.draw.rect(screen, (60, 40, 30), btn_rect, 2, border_radius=5)
-                
-                btn_txt = self.font.render("Unlock", True, WHITE)
-                screen.blit(btn_txt, (btn_rect.centerx - btn_txt.get_width()//2, btn_rect.centery - btn_txt.get_height()//2))
-                
-                self.unlock_buttons.append((btn_rect, tech))
+                # Real screen rect for click detection
+                screen_btn = btn_rect.copy()
+                screen_btn.x += content_rect.x
+                screen_btn.y += content_rect.y
+                self.unlock_buttons.append((screen_btn, tech))
             else:
                 lbl = self.font.render("Unlocked", True, (0, 100, 0))
-                screen.blit(lbl, (box_rect.right - 80, box_rect.y + 20))
-                
+                content_surf.blit(lbl, (box_rect.right - 80, box_rect.y + 20))
             y_pos += 70
+        
+        self.content_height = y_pos - self.scroll_y + 20
+        screen.blit(content_surf, content_rect.topleft)
 
     def handle_input(self, event):
         res = super().handle_input(event)
-        if res == "CLOSE": return "CLOSE"
-        
+        if res: return res
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for btn, tech in self.unlock_buttons:
                 if btn.collidepoint(event.pos):
@@ -348,161 +318,200 @@ class ResearchWindow(Window):
                     return "HANDLED"
         return None
 
-class WorkerAssignmentWindow(Window):
-    def __init__(self, resource_manager, world):
+class ItemCodexWindow(Window):
+    def __init__(self, resource_manager):
         cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
         w, h = 600, 450
-        super().__init__(cx - w//2, cy - h//2, w, h, "Assign Workers & Robots")
+        super().__init__(cx - w//2, cy - h//2, w, h, "Item Codex")
         self.rm = resource_manager
-        self.world = world
         
-        # Define jobs order
-        self.jobs = ["House", "Logging Workshop", "Stone Refinery", "Mine", "Farm", "Garden", "Oxygenator", "Laboratory", "Warehouse"]
-        self.controls = [] # List of tuples (minus_rect, plus_rect, job_name)
-        self.robot_controls = [] # List of tuples (minus_rect, plus_rect, job_name)
-        self.collect_buttons = [] # List of tuples (rect, job_name)
-        self.upgrade_buttons = [] # List of tuples (rect, job_name)
+        self.items = [
+            {"name": "Wood", "desc": "Basic building material harvested from Logging Workshops. Essential for early construction.", "tech": None},
+            {"name": "Stone", "desc": "Raw stone gathered from Stone Refineries. Used for foundations and heavy structures.", "tech": None},
+            {"name": "Iron", "desc": "Raw iron extracted from Mines. Vital for machinery and advanced building components.", "tech": None},
+            {"name": "Food", "desc": "Essential sustenance for your villagers. Keeps productivity high; efficiency drops if people are hungry.", "tech": None},
+            {"name": "Copper", "desc": "Metallic element mined from Copper Mines. Primarily used in the Advanced Machine Factory to produce wiring.", "tech": None},
+            {"name": "Science", "desc": "Abstract knowledge generated by Laboratories. Invested in the Research Tree to unlock new tech.", "tech": None},
+            {"name": "Oxygen", "desc": "Breathable air produced by Oxygenators. Required for survival and fueling rocket launches.", "tech": "Life Support"},
+            {"name": "Material Parts", "desc": "Precision components manufactured in Raw Material Factories from Iron and Stone.", "tech": "Factory Automation"},
+            {"name": "Steel", "desc": "A strong alloy from Blast Furnaces (Wood + Iron). Essential for high-tier technology and the Rocket.", "tech": "Advanced Metallurgy"},
+            {"name": "Batteries", "desc": "Energy storage units produced by Power Plants from Wiring. Necessary to power advanced buildings like the Blast Furnace and Copper Mine.", "tech": "Power Generation"},
+            {"name": "Wiring", "desc": "Electrical conductors made from Copper in the Advanced Machine Factory. Used in Power Plants to manufacture Batteries.", "tech": "Electronics"}
+        ]
+        self.selected_item = self.items[0]
+        self.list_buttons = []
+        self.content_height = len(self.items) * 45
 
     def draw(self, screen):
         super().draw(screen)
         
-        # Reset lists for hit detection
-        self.controls = []
-        self.robot_controls = []
-        self.collect_buttons = []
-        self.upgrade_buttons = []
+        # Split: Left (List), Right (Details)
+        list_rect = pygame.Rect(self.rect.x + 10, self.rect.y + 40, 200, self.rect.height - 50)
+        detail_rect = pygame.Rect(self.rect.x + 220, self.rect.y + 40, self.rect.width - 230, self.rect.height - 50)
         
-        # Create a surface for scrollable content
+        pygame.draw.rect(screen, (200, 170, 130), list_rect, border_radius=5)
+        pygame.draw.rect(screen, (60, 40, 30), list_rect, 2, border_radius=5)
+        
+        # Draw List with Clipping
+        list_surf = pygame.Surface((list_rect.width - 4, list_rect.height - 4), pygame.SRCALPHA)
+        self.list_buttons = []
+        
+        y_off = self.scroll_y
+        for item in self.items:
+            unlocked = item["tech"] is None or item["tech"] in self.rm.unlocked_techs
+            if not unlocked:
+                y_off += 45
+                continue
+                
+            btn_rect = pygame.Rect(5, y_off, list_rect.width - 15, 40)
+            is_selected = self.selected_item == item
+            bg_col = (180, 140, 100) if is_selected else (220, 190, 150)
+            
+            pygame.draw.rect(list_surf, bg_col, btn_rect, border_radius=5)
+            pygame.draw.rect(list_surf, (60, 40, 30), btn_rect, 1, border_radius=5)
+            
+            txt = self.font.render(item["name"], True, (30, 20, 10))
+            list_surf.blit(txt, (btn_rect.x + 10, btn_rect.y + 10))
+            
+            # Real screen rect for click detection
+            screen_btn = btn_rect.copy()
+            screen_btn.x += list_rect.x + 2
+            screen_btn.y += list_rect.y + 2
+            self.list_buttons.append((screen_btn, item))
+            
+            y_off += 45
+            
+        screen.blit(list_surf, (list_rect.x + 2, list_rect.y + 2))
+        
+        # Draw Details
+        if self.selected_item:
+            # Header Picture Area
+            pic_rect = pygame.Rect(detail_rect.x + 20, detail_rect.y + 10, detail_rect.width - 40, 150)
+            pygame.draw.rect(screen, (235, 225, 205), pic_rect, border_radius=10)
+            pygame.draw.rect(screen, (60, 40, 30), pic_rect, 2, border_radius=10)
+            
+            assets = Assets.get()
+            sprite = assets.get_sprite(f"item_{self.selected_item['name']}")
+            if sprite:
+                # Scaled up for "High Quality" look
+                scaled = pygame.transform.scale(sprite, (128, 128))
+                screen.blit(scaled, (pic_rect.centerx - 64, pic_rect.centery - 64))
+            
+            # Name
+            name_surf = pygame.font.SysFont("Arial", 24, bold=True).render(self.selected_item["name"], True, (60, 40, 30))
+            screen.blit(name_surf, (detail_rect.x + 20, pic_rect.bottom + 15))
+            
+            # Description (Wrapped)
+            desc = self.selected_item["desc"]
+            words = desc.split(' ')
+            lines = []
+            curr_line = ""
+            for w in words:
+                if self.font.size(curr_line + w)[0] < detail_rect.width - 40:
+                    curr_line += w + " "
+                else:
+                    lines.append(curr_line)
+                    curr_line = w + " "
+            lines.append(curr_line)
+            
+            for i, line in enumerate(lines):
+                l_surf = self.font.render(line, True, (40, 30, 20))
+                screen.blit(l_surf, (detail_rect.x + 20, pic_rect.bottom + 50 + i*22))
+
+    def handle_input(self, event):
+        res = super().handle_input(event)
+        if res: return res
+        
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for btn, item in self.list_buttons:
+                # Account for scrolling in click detection
+                # Wait, screen_btn is calculated with scroll_y inside draw.
+                # So we just check collision.
+                if btn.collidepoint(event.pos):
+                    self.selected_item = item
+                    return "HANDLED"
+        return None
+
+class WorkerAssignmentWindow(Window):
+    def __init__(self, resource_manager, world):
+        cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+        super().__init__(cx - 300, cy - 225, 600, 450, "Assign Workers")
+        self.rm = resource_manager
+        self.world = world
+        self.jobs = ["House", "Logging Workshop", "Stone Refinery", "Mine", "Copper Mine", "Blast Furnace", "Advanced Machine Factory", "Power Plant", "Farm", "Garden", "Oxygenator", "Laboratory", "Warehouse", "Raw Material Factory"]
+        self.controls = [] 
+        self.upgrade_buttons = []
+
+    def draw(self, screen):
+        super().draw(screen)
+        self.controls = []
+        self.upgrade_buttons = []
         content_rect = pygame.Rect(self.rect.x + 2, self.rect.y + 70, self.rect.width - 4, self.rect.height - 72)
         content_surf = pygame.Surface((content_rect.width, content_rect.height), pygame.SRCALPHA)
         
-        # Available Robots
-        avail_robots = self.rm.inventory.get("robots", 0)
-        r_txt = self.font.render(f"Available Robots: {avail_robots}", True, (0, 100, 200))
-        screen.blit(r_txt, (self.rect.x + 20, self.rect.y + 40))
-
         y_pos = self.scroll_y
         row_height = 45
-        
         for job in self.jobs:
-            # Gather stats
             buildings = [b for b in self.world.buildings.values() if b.type == job]
             count = len(buildings)
             if count == 0: continue
             
-            # Special case for House display
             if job == "House":
-                 total_capacity = sum(20 * b.level for b in buildings)
-                 assigned_count = sum(b.villagers for b in buildings)
-                 robots_count = 0
-                 target = -2 # Special flag to hide controls
+                 total_cap = sum(20 * b.level for b in buildings)
+                 assigned = sum(b.villagers for b in buildings)
+                 target = -2
             else:
-                 total_capacity = sum(3 * b.level for b in buildings)
-                 assigned_count = sum(len(b.assigned_workers) for b in buildings)
-                 robots_count = sum(b.robots_assigned for b in buildings)
+                 total_cap = sum(3 * b.level for b in buildings)
+                 assigned = sum(len(b.assigned_workers) for b in buildings)
                  target = self.rm.job_targets.get(job, -1)
             
-            # Draw Icon
             assets = Assets.get()
             sprite = assets.get_sprite(job)
             if sprite:
-                scaled = pygame.transform.scale(sprite, (32, 32))
-                content_surf.blit(scaled, (18, y_pos))
+                content_surf.blit(pygame.transform.scale(sprite, (32, 32)), (18, y_pos))
             
-            # Text
-            if job == "House":
-                 txt = f"x{count}: {assigned_count}/{total_capacity} v"
-            else:
-                 txt = f"x{count}: {assigned_count}/{total_capacity} v, {robots_count} r"
+            txt = f"x{count}: {assigned}/{total_cap} v"
+            content_surf.blit(self.font.render(txt, True, BLACK), (58, y_pos + 8))
             
-            t_surf = self.font.render(txt, True, BLACK)
-            content_surf.blit(t_surf, (58, y_pos + 8))
-            
-            # Controls Layout
-            # [U] [C] | Workers [-] [Val] [+] | Robots [-] [+]
-            
-            # Upgrade Button
             upgrade_rect = pygame.Rect(218, y_pos + 5, 30, 25)
             pygame.draw.rect(content_surf, (100, 100, 255), upgrade_rect)
-            u_txt = self.font.render("U", True, WHITE)
-            content_surf.blit(u_txt, (upgrade_rect.centerx - u_txt.get_width()//2, upgrade_rect.centery - u_txt.get_height()//2))
+            utxt = self.font.render("U", True, WHITE)
+            content_surf.blit(utxt, (upgrade_rect.centerx - utxt.get_width()//2, upgrade_rect.centery - utxt.get_height()//2))
             
-            # Real screen rect for collision
             screen_upgrade = upgrade_rect.copy()
             screen_upgrade.x += content_rect.x
             screen_upgrade.y += content_rect.y
             self.upgrade_buttons.append((screen_upgrade, job))
 
             if job != "House":
-                # Collect Button
-                collect_rect = pygame.Rect(253, y_pos + 5, 30, 25)
-                pygame.draw.rect(content_surf, (100, 160, 100), collect_rect, border_radius=5)
-                c_txt = self.font.render("C", True, WHITE)
-                content_surf.blit(c_txt, (collect_rect.centerx - c_txt.get_width()//2, collect_rect.centery - c_txt.get_height()//2))
-                
-                screen_collect = collect_rect.copy()
-                screen_collect.x += content_rect.x
-                screen_collect.y += content_rect.y
-                self.collect_buttons.append((screen_collect, job))
-                
-                # Worker Target Controls
-                w_minus = pygame.Rect(298, y_pos + 5, 25, 25)
-                w_plus = pygame.Rect(378, y_pos + 5, 25, 25)
-                
+                w_minus = pygame.Rect(253, y_pos + 5, 25, 25)
+                w_plus = pygame.Rect(333, y_pos + 5, 25, 25)
                 pygame.draw.rect(content_surf, (160, 110, 80), w_minus, border_radius=5)
                 pygame.draw.rect(content_surf, (160, 110, 80), w_plus, border_radius=5)
                 content_surf.blit(self.font.render("-", True, WHITE), (w_minus.centerx - 4, w_minus.centery - 10))
                 content_surf.blit(self.font.render("+", True, WHITE), (w_plus.centerx - 6, w_plus.centery - 10))
+                vtxt = self.font.render("Max" if target == -1 else str(target), True, BLACK)
+                content_surf.blit(vtxt, (288, y_pos + 8))
                 
-                val_str = "Max" if target == -1 else str(target)
-                v_surf = self.font.render(val_str, True, BLACK)
-                content_surf.blit(v_surf, (333, y_pos + 8))
-                
-                screen_w_minus = w_minus.copy()
-                screen_w_minus.x += content_rect.x
-                screen_w_minus.y += content_rect.y
-                screen_w_plus = w_plus.copy()
-                screen_w_plus.x += content_rect.x
-                screen_w_plus.y += content_rect.y
-                self.controls.append((screen_w_minus, screen_w_plus, job))
-
-                # Robot Controls
-                r_minus = pygame.Rect(428, y_pos + 5, 25, 25)
-                r_plus = pygame.Rect(508, y_pos + 5, 25, 25)
-                
-                pygame.draw.rect(content_surf, (100, 100, 100), r_minus, border_radius=5)
-                pygame.draw.rect(content_surf, (100, 100, 100), r_plus, border_radius=5)
-                content_surf.blit(self.font.render("-", True, WHITE), (r_minus.centerx - 4, r_minus.centery - 10))
-                content_surf.blit(self.font.render("+", True, WHITE), (r_plus.centerx - 6, r_plus.centery - 10))
-                
-                r_val_surf = self.font.render(f"R:{robots_count}", True, (0, 50, 150))
-                content_surf.blit(r_val_surf, (458, y_pos + 8))
-                
-                screen_r_minus = r_minus.copy()
-                screen_r_minus.x += content_rect.x
-                screen_r_minus.y += content_rect.y
-                screen_r_plus = r_plus.copy()
-                screen_r_plus.x += content_rect.x
-                screen_r_plus.y += content_rect.y
-                self.robot_controls.append((screen_r_minus, screen_r_plus, job))
-
+                screen_minus = w_minus.copy()
+                screen_minus.x += content_rect.x
+                screen_minus.y += content_rect.y
+                screen_plus = w_plus.copy()
+                screen_plus.x += content_rect.x
+                screen_plus.y += content_rect.y
+                self.controls.append((screen_minus, screen_plus, job))
             y_pos += row_height
         
         self.content_height = y_pos - self.scroll_y + 20
         screen.blit(content_surf, content_rect.topleft)
+
     def handle_input(self, event):
         res = super().handle_input(event)
-        if res == "CLOSE": return "CLOSE"
-        
+        if res: return res
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for btn, job in self.upgrade_buttons:
                 if btn.collidepoint(event.pos):
-                    # Upgrade all buildings of this type
-                    buildings = [b for b in self.world.buildings.values() if b.type == job]
-                    # Sort by level (cheapest first? or random?)
-                    # Let's do lowest level first to maximize upgrades
-                    buildings.sort(key=lambda b: b.level)
-                    
+                    buildings = sorted([b for b in self.world.buildings.values() if b.type == job], key=lambda b: b.level)
                     for b in buildings:
                         if b.level < 100:
                             cost = b.get_upgrade_cost()
@@ -510,104 +519,43 @@ class WorkerAssignmentWindow(Window):
                                 self.rm.deduct_resources(cost)
                                 b.level += 1
                     return "HANDLED"
-
-            for btn, job in self.collect_buttons:
-                if btn.collidepoint(event.pos):
-                    # Collect from all buildings of this type
-                    buildings = [b for b in self.world.buildings.values() if b.type == job]
-                    for b in buildings:
-                        if b.production_buffer >= 1:
-                            rtype = ""
-                            if b.type == "Logging Workshop": rtype = "wood"
-                            elif b.type == "Stone Refinery": rtype = "stone"
-                            elif b.type == "Mine": rtype = "iron"
-                            elif b.type == "Oxygenator": rtype = "oxygen"
-                            elif b.type in ["Farm", "Garden"]: rtype = "food"
-                            
-                            if rtype:
-                                amount = int(b.production_buffer)
-                                self.rm.add_resource(rtype, amount)
-                                b.production_buffer -= amount
-                    return "HANDLED"
-
             for minus, plus, job in self.controls:
-                current_target = self.rm.job_targets.get(job, -1)
-                
-                # Calculate max capacity for clamping logic
-                buildings = [b for b in self.world.buildings.values() if b.type == job]
-                total_capacity = sum(3 * b.level for b in buildings)
-                if total_capacity == 0: continue
-
+                curr = self.rm.job_targets.get(job, -1)
+                total_cap = sum(3 * b.level for b in [b for b in self.world.buildings.values() if b.type == job])
+                if total_cap == 0: continue
                 if minus.collidepoint(event.pos):
-                    if current_target == -1:
-                        # Max -> Max - 1 (or total capacity - 1)
-                        self.rm.job_targets[job] = total_capacity - 1
-                    elif current_target > 0:
-                        self.rm.job_targets[job] -= 1
+                    if curr == -1: self.rm.job_targets[job] = total_cap - 1
+                    elif curr > 0: self.rm.job_targets[job] -= 1
                     return "HANDLED"
-                
                 if plus.collidepoint(event.pos):
-                    if current_target != -1:
-                        if current_target + 1 >= total_capacity:
-                            self.rm.job_targets[job] = -1 # Set to Max
-                        else:
-                            self.rm.job_targets[job] += 1
-                    return "HANDLED"
-            
-            for minus, plus, job in self.robot_controls:
-                buildings = [b for b in self.world.buildings.values() if b.type == job]
-                total_capacity = sum(3 * b.level for b in buildings)
-                robots_count = sum(b.robots_assigned for b in buildings)
-                
-                if minus.collidepoint(event.pos):
-                    if robots_count > 0:
-                        # Remove robot from first available building
-                        for b in buildings:
-                            if b.robots_assigned > 0:
-                                b.robots_assigned -= 1
-                                self.rm.inventory["robots"] = self.rm.inventory.get("robots", 0) + 1
-                                break
-                    return "HANDLED"
-                
-                if plus.collidepoint(event.pos):
-                    avail_robots = self.rm.inventory.get("robots", 0)
-                    if avail_robots > 0:
-                        # Add robot to first building with space
-                        for b in buildings:
-                            current_workers = len(b.assigned_workers) + b.robots_assigned
-                            if current_workers < (3 * b.level):
-                                b.robots_assigned += 1
-                                self.rm.inventory["robots"] -= 1
-                                break
+                    if curr != -1:
+                        if curr + 1 >= total_cap: self.rm.job_targets[job] = -1
+                        else: self.rm.job_targets[job] += 1
                     return "HANDLED"
         return None
 
 class InventoryWindow(Window):
     def __init__(self, resource_manager):
         cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
-        w, h = 300, 200
-        super().__init__(cx - w//2, cy - h//2, w, h, "Inventory")
+        super().__init__(cx - 150, cy - 100, 300, 200, "Inventory")
         self.rm = resource_manager
         self.content_height = len(self.rm.inventory) * 30 + 50
 
     def draw(self, screen):
         super().draw(screen)
-        
-        # Create a surface for scrollable content
         content_rect = pygame.Rect(self.rect.x + 2, self.rect.y + 30, self.rect.width - 4, self.rect.height - 32)
         content_surf = pygame.Surface((content_rect.width, content_rect.height), pygame.SRCALPHA)
-        
         y_offset = self.scroll_y + 10
         for res, amount in self.rm.inventory.items():
             txt = f"{res.capitalize()}: {int(amount)}"
-            surf = self.font.render(txt, True, BLACK)
-            content_surf.blit(surf, (20, y_offset))
+            content_surf.blit(self.font.render(txt, True, BLACK), (20, y_offset))
             y_offset += 30
-            
         screen.blit(content_surf, content_rect.topleft)
 
     def handle_input(self, event):
-        return super().handle_input(event)
+        res = super().handle_input(event)
+        if res: return res
+        return None
 
 class TutorialPrompt(Window):
     def __init__(self):
@@ -620,7 +568,6 @@ class TutorialPrompt(Window):
         super().draw(screen)
         t = self.font.render("Would you like a tutorial?", True, BLACK)
         screen.blit(t, (self.rect.centerx - t.get_width()//2, self.rect.y + 40))
-        
         pygame.draw.rect(screen, (50, 150, 50), self.yes_btn)
         pygame.draw.rect(screen, (150, 50, 50), self.no_btn)
         screen.blit(self.font.render("YES", True, WHITE), (self.yes_btn.centerx - 15, self.yes_btn.centery - 10))
@@ -629,7 +576,7 @@ class TutorialPrompt(Window):
     def handle_input(self, event):
         res = super().handle_input(event)
         if res == "CLOSE": return "CLOSE"
-        
+        if res: return res
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.yes_btn.collidepoint(event.pos): return "START_TUTORIAL"
             if self.no_btn.collidepoint(event.pos): return "CLOSE"
@@ -638,12 +585,10 @@ class TutorialPrompt(Window):
 class TutorialWindow(Window):
     def __init__(self, hud):
         cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
-        w, h = 500, 250
-        super().__init__(cx - w//2, cy - h//2, w, h, "Help Guide")
+        super().__init__(cx - 250, cy - 125, 500, 250, "Help Guide")
         self.hud = hud
         self.page = 0
         self.next_btn = pygame.Rect(self.rect.x + self.rect.width - 100, self.rect.y + self.rect.height - 40, 80, 30)
-        
         self.pages = [
             "Hello this is your floating island that you are stuck on your main goal is to build a rocket ship to escape your floating island to do this you must build buildings to collect these resources iron, stone.",
             "How do you make buildings you might ask, well I will show you. First in the inventory (there will be a little arrow pointing to the inventory icon) by left clicking on it and you will see: 10 wood, 10 stone, and 10 iron.",
@@ -657,48 +602,36 @@ class TutorialWindow(Window):
 
     def draw(self, screen):
         super().draw(screen)
-        # Wrap and draw text
         words = self.pages[self.page].split(' ')
-        lines = []
-        curr_line = ""
+        lines, curr = [], ""
         for word in words:
-            if self.font.size(curr_line + word)[0] < self.rect.width - 40:
-                curr_line += word + " "
+            if self.font.size(curr + word)[0] < self.rect.width - 40: curr += word + " "
             else:
-                lines.append(curr_line)
-                curr_line = word + " "
-        lines.append(curr_line)
-        
+                lines.append(curr)
+                curr = word + " "
+        lines.append(curr)
         for i, line in enumerate(lines):
-            ls = self.font.render(line, True, BLACK)
-            screen.blit(ls, (self.rect.x + 20, self.rect.y + 40 + i*20))
-
+            screen.blit(self.font.render(line, True, BLACK), (self.rect.x + 20, self.rect.y + 40 + i*20))
         pygame.draw.rect(screen, (100, 100, 100), self.next_btn)
         nt = "FINISH" if self.page == len(self.pages) - 1 else "NEXT"
         screen.blit(self.font.render(nt, True, WHITE), (self.next_btn.x + 10, self.next_btn.y + 5))
-
-        # Draw Arrows
         assets = Assets.get()
         arrow = assets.get_sprite("icon_arrow_up")
         if arrow:
-            if self.page == 1: # Point to Inventory Panel
-                pos = (self.hud.inventory_panel_rect.x - 40, self.hud.inventory_panel_rect.y + 10)
-                # Rotate arrow to point right
-                rotated = pygame.transform.rotate(arrow, -90)
-                screen.blit(rotated, pos)
-            elif self.page == 2: # Point to Building Tab
-                pos = (self.hud.build_icon_rect.x + 40, self.hud.build_icon_rect.y + 8)
-                rotated = pygame.transform.rotate(arrow, 90)
-                screen.blit(rotated, pos)
+            if self.page == 1:
+                screen.blit(pygame.transform.rotate(arrow, -90), (self.hud.inventory_panel_rect.x - 40, self.hud.inventory_panel_rect.y + 10))
+            elif self.page == 2:
+                screen.blit(pygame.transform.rotate(arrow, 90), (self.hud.build_icon_rect.x + 40, self.hud.build_icon_rect.y + 8))
 
     def handle_input(self, event):
+        res = super().handle_input(event)
+        if res: return res
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.next_btn.collidepoint(event.pos):
                 if self.page < len(self.pages) - 1:
                     self.page += 1
                     return "HANDLED"
-                else:
-                    return "CLOSE"
+                return "CLOSE"
         return None
 
 class CodeWindow(Window):
@@ -711,52 +644,37 @@ class CodeWindow(Window):
 
     def draw(self, screen):
         super().draw(screen)
-        # Input Box
         input_rect = pygame.Rect(self.rect.x + 20, self.rect.y + 50, 260, 30)
         pygame.draw.rect(screen, WHITE, input_rect)
         pygame.draw.rect(screen, BLACK, input_rect, 1)
-        
-        txt_surf = self.font.render(self.input_text, True, BLACK)
-        screen.blit(txt_surf, (input_rect.x + 5, input_rect.y + 5))
-        
-        if self.message:
-            m_surf = self.font.render(self.message, True, (200, 50, 50))
-            screen.blit(m_surf, (self.rect.x + 20, self.rect.y + 90))
-        else:
-            hint = self.font.render("Press Enter to submit", True, (100, 100, 100))
-            screen.blit(hint, (self.rect.x + 20, self.rect.y + 90))
+        screen.blit(self.font.render(self.input_text, True, BLACK), (input_rect.x + 5, input_rect.y + 5))
+        if self.message: screen.blit(self.font.render(self.message, True, (200, 50, 50)), (self.rect.x + 20, self.rect.y + 90))
+        else: screen.blit(self.font.render("Press Enter to submit", True, (100, 100, 100)), (self.rect.x + 20, self.rect.y + 90))
 
     def handle_input(self, event):
         res = super().handle_input(event)
         if res == "CLOSE": return "CLOSE"
-        
+        if res: return res
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RETURN:
-                if self.input_text in self.rm.used_codes:
-                    self.message = "Code already used!"
+                if self.input_text in self.rm.used_codes: self.message = "Code already used!"
                 elif self.input_text == "baconwithcherries":
-                    for res in ["wood", "stone", "iron"]:
-                        self.rm.add_resource(res, 1500)
+                    for res in ["wood", "stone", "iron"]: self.rm.add_resource(res, 1500)
                     self.rm.science_points += 2000
                     self.rm.used_codes.append("baconwithcherries")
                     return "CLOSE"
                 elif self.input_text == "banana":
                     self.rm.add_resource("food", 5000)
-                    self.rm.inventory["robots"] += 10
                     self.rm.used_codes.append("banana")
                     return "CLOSE"
                 elif self.input_text == "goldmine":
-                    for res in ["wood", "stone", "iron"]:
-                        self.rm.add_resource(res, 5000)
+                    for res in ["wood", "stone", "iron"]: self.rm.add_resource(res, 5000)
                     self.rm.used_codes.append("goldmine")
                     return "CLOSE"
-                else:
-                    self.message = "Invalid Code!"
-            elif event.key == pygame.K_BACKSPACE:
-                self.input_text = self.input_text[:-1]
+                else: self.message = "Invalid Code!"
+            elif event.key == pygame.K_BACKSPACE: self.input_text = self.input_text[:-1]
             else:
-                if len(self.input_text) < 20:
-                    self.input_text += event.unicode
+                if len(self.input_text) < 20: self.input_text += event.unicode
         return None
 
 class EndGameWindow(Window):
@@ -769,15 +687,15 @@ class EndGameWindow(Window):
         super().draw(screen)
         t = self.font.render("Congrats Game Over", True, BLACK)
         screen.blit(t, (self.rect.centerx - t.get_width()//2, self.rect.y + 40))
-        
         pygame.draw.rect(screen, (50, 150, 50), self.exit_btn)
         et = self.font.render("Exit to Title Screen", True, WHITE)
         screen.blit(et, (self.exit_btn.centerx - et.get_width()//2, self.exit_btn.centery - et.get_height()//2))
 
     def handle_input(self, event):
+        res = super().handle_input(event)
+        if res: return res
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.exit_btn.collidepoint(event.pos):
-                return "GAME_OVER_EXIT"
+            if self.exit_btn.collidepoint(event.pos): return "GAME_OVER_EXIT"
         return None
 
 class RocketWindow(Window):
@@ -788,33 +706,24 @@ class RocketWindow(Window):
         self.rm = resource_manager
         self.em = entity_manager
         self.game = game
-        
         self.board_one_btn = pygame.Rect(self.rect.x + 50, self.rect.y + 110, 200, 35)
         self.board_all_btn = pygame.Rect(self.rect.x + 50, self.rect.y + 155, 200, 35)
         self.launch_btn = pygame.Rect(self.rect.x + 50, self.rect.y + 220, 200, 45)
 
     def draw(self, screen):
         super().draw(screen)
-        total_pop = self.em.get_count()
-        remaining = total_pop - self.building.boarded_population
-        
-        t1 = self.font.render(f"City Population: {total_pop}", True, BLACK)
-        t2 = self.font.render(f"Boarded: {self.building.boarded_population}", True, BLACK)
-        screen.blit(t1, (self.rect.x + 20, self.rect.y + 40))
-        screen.blit(t2, (self.rect.x + 20, self.rect.y + 70))
-        
-        if remaining > 0:
-            # Board One
+        pop = self.em.get_count()
+        rem = pop - self.building.boarded_population
+        screen.blit(self.font.render(f"City Population: {pop}", True, BLACK), (self.rect.x + 20, self.rect.y + 40))
+        screen.blit(self.font.render(f"Boarded: {self.building.boarded_population}", True, BLACK), (self.rect.x + 20, self.rect.y + 70))
+        if rem > 0:
             pygame.draw.rect(screen, (100, 100, 255), self.board_one_btn)
-            bt1 = self.font.render(f"Board 1 (10 all + ox)", True, WHITE)
-            screen.blit(bt1, (self.board_one_btn.centerx - bt1.get_width()//2, self.board_one_btn.centery - bt1.get_height()//2))
-            
-            # Board All
+            b1 = self.font.render("Board 1 (10 all + ox)", True, WHITE)
+            screen.blit(b1, (self.board_one_btn.centerx - b1.get_width()//2, self.board_one_btn.centery - b1.get_height()//2))
             pygame.draw.rect(screen, (80, 80, 200), self.board_all_btn)
-            bt2 = self.font.render(f"Board All ({remaining * 10} all + ox)", True, WHITE)
-            screen.blit(bt2, (self.board_all_btn.centerx - bt2.get_width()//2, self.board_all_btn.centery - bt2.get_height()//2))
-        
-        if self.building.boarded_population >= total_pop and total_pop > 0:
+            ba = self.font.render(f"Board All ({rem * 10} all + ox)", True, WHITE)
+            screen.blit(ba, (self.board_all_btn.centerx - ba.get_width()//2, self.board_all_btn.centery - ba.get_height()//2))
+        if self.building.boarded_population >= pop and pop > 0:
             pygame.draw.rect(screen, (255, 50, 50), self.launch_btn)
             lt = self.font.render("LAUNCH ROCKET", True, WHITE)
             screen.blit(lt, (self.launch_btn.centerx - lt.get_width()//2, self.launch_btn.centery - lt.get_height()//2))
@@ -822,153 +731,60 @@ class RocketWindow(Window):
     def handle_input(self, event):
         res = super().handle_input(event)
         if res == "CLOSE": return "CLOSE"
-        
+        if res: return res
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            total_pop = self.em.get_count()
-            remaining = total_pop - self.building.boarded_population
-            
-            # Board One
-            if self.board_one_btn.collidepoint(event.pos) and remaining > 0:
+            pop = self.em.get_count()
+            rem = pop - self.building.boarded_population
+            if self.board_one_btn.collidepoint(event.pos) and rem > 0:
                 cost = {"wood": 10, "stone": 10, "iron": 10, "oxygen": 10}
                 if self.rm.has_resources(cost):
                     self.rm.deduct_resources(cost)
                     self.building.boarded_population += 1
-            
-            # Board All
-            if self.board_all_btn.collidepoint(event.pos) and remaining > 0:
-                cost = {"wood": remaining * 10, "stone": remaining * 10, "iron": remaining * 10, "oxygen": remaining * 10}
+            if self.board_all_btn.collidepoint(event.pos) and rem > 0:
+                cost = {"wood": rem * 10, "stone": rem * 10, "iron": rem * 10, "oxygen": rem * 10}
                 if self.rm.has_resources(cost):
                     self.rm.deduct_resources(cost)
-                    self.building.boarded_population = total_pop
-            
-            # Launch
-            if self.launch_btn.collidepoint(event.pos):
-                if self.building.boarded_population >= total_pop and total_pop > 0:
-                    self.building.is_launching = True
-                    return "CLOSE"
+                    self.building.boarded_population = pop
+            if self.launch_btn.collidepoint(event.pos) and self.building.boarded_population >= pop and pop > 0:
+                self.building.is_launching = True
+                return "CLOSE"
         return None
 
 class TraderWindow(Window):
     def __init__(self, resource_manager):
         cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
-        w, h = 400, 300
-        super().__init__(cx - w//2, cy - h//2, w, h, "Traveling Merchant")
+        super().__init__(cx - 200, cy - 150, 400, 300, "Traveling Merchant")
         self.rm = resource_manager
-        
-        # Trades: Cost -> Reward
-        self.trades = [
-            {"cost": {"wood": 100}, "reward": {"emerald": 1}},
-            {"cost": {"stone": 100}, "reward": {"diamond": 1}},
-            {"cost": {"iron": 50}, "reward": {"gold": 5}},
-            {"cost": {"food": 50}, "reward": {"copper": 10}}
-        ]
-        
+        self.trades = [{"cost": {"wood": 100}, "reward": {"emerald": 1}}, {"cost": {"stone": 100}, "reward": {"diamond": 1}}, {"cost": {"iron": 50}, "reward": {"gold": 5}}, {"cost": {"food": 50}, "reward": {"copper": 10}}]
         self.trade_buttons = []
 
     def draw(self, screen):
         super().draw(screen)
-        
         y_pos = self.rect.y + 50
+        self.trade_buttons = []
         for trade in self.trades:
-            # Format text
-            cost_txt = ", ".join([f"{v} {k.capitalize()}" for k, v in trade["cost"].items()])
-            reward_txt = ", ".join([f"{v} {k.capitalize()}" for k, v in trade["reward"].items()])
-            
-            label = self.font.render(f"{cost_txt}  ->  {reward_txt}", True, (60, 40, 30))
-            screen.blit(label, (self.rect.x + 20, y_pos + 5))
-            
-            # Button
+            ctx = ", ".join([f"{v} {k.capitalize()}" for k, v in trade["cost"].items()])
+            rtx = ", ".join([f"{v} {k.capitalize()}" for k, v in trade["reward"].items()])
+            screen.blit(self.font.render(f"{ctx} -> {rtx}", True, (60, 40, 30)), (self.rect.x + 20, y_pos + 5))
             btn_rect = pygame.Rect(self.rect.right - 100, y_pos, 80, 30)
-            
-            can_afford = self.rm.has_resources(trade["cost"])
-            color = (100, 160, 100) if can_afford else (150, 150, 150)
-            
+            color = (100, 160, 100) if self.rm.has_resources(trade["cost"]) else (150, 150, 150)
             pygame.draw.rect(screen, color, btn_rect, border_radius=5)
             pygame.draw.rect(screen, (60, 40, 30), btn_rect, 2, border_radius=5)
-            
             bt = self.font.render("Trade", True, WHITE)
             screen.blit(bt, (btn_rect.centerx - bt.get_width()//2, btn_rect.centery - bt.get_height()//2))
-            
             self.trade_buttons.append((btn_rect, trade))
             y_pos += 50
 
     def handle_input(self, event):
         res = super().handle_input(event)
         if res == "CLOSE": return "CLOSE"
-        
+        if res: return res
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for btn, trade in self.trade_buttons:
                 if btn.collidepoint(event.pos):
                     if self.rm.deduct_resources(trade["cost"]):
-                        for res, amount in trade["reward"].items():
-                            self.rm.add_resource(res, amount)
+                        for res, amount in trade["reward"].items(): self.rm.add_resource(res, amount)
                     return "HANDLED"
-        return None
-
-class LaboratoryInspector(Window):
-    def __init__(self, building, resource_manager, world, game):
-        cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
-        w, h = 400, 300
-        super().__init__(cx - w//2, cy - h//2, w, h, "Laboratory")
-        self.building = building
-        self.rm = resource_manager
-        self.world = world
-        self.game = game
-        self.research_btn = pygame.Rect(self.rect.x + 100, self.rect.y + 200, 200, 40)
-
-    def draw(self, screen):
-        super().draw(screen)
-        
-        # Stats
-        science_gen = self.building.production_buffer
-        txt = self.font.render(f"Science Generated: {science_gen:.2f}", True, BLACK)
-        screen.blit(txt, (self.rect.x + 20, self.rect.y + 50))
-        
-        # Open Research Button
-        pygame.draw.rect(screen, (100, 100, 200), self.research_btn, border_radius=5)
-        pygame.draw.rect(screen, (60, 40, 30), self.research_btn, 2, border_radius=5)
-        bt = self.font.render("Open Research Tree", True, WHITE)
-        screen.blit(bt, (self.research_btn.centerx - bt.get_width()//2, self.research_btn.centery - bt.get_height()//2))
-
-        # Assignment Controls
-        assigned = len(self.building.assigned_workers)
-        max_workers = 3 * self.building.level
-        w_txt = self.font.render(f"Workers: {assigned}/{max_workers}", True, BLACK)
-        screen.blit(w_txt, (self.rect.x + 20, self.rect.y + 100))
-        
-        r_txt = self.font.render(f"Robots Assigned: {self.building.robots_assigned}", True, (0, 50, 150))
-        screen.blit(r_txt, (self.rect.x + 20, self.rect.y + 130))
-        
-        self.robot_minus_btn = pygame.Rect(self.rect.x + 220, self.rect.y + 130, 25, 25)
-        self.robot_plus_btn = pygame.Rect(self.rect.x + 255, self.rect.y + 130, 25, 25)
-        
-        pygame.draw.rect(screen, (100, 100, 100), self.robot_minus_btn, border_radius=5)
-        pygame.draw.rect(screen, (100, 100, 100), self.robot_plus_btn, border_radius=5)
-        screen.blit(self.font.render("-", True, WHITE), (self.robot_minus_btn.centerx - 4, self.robot_minus_btn.centery - 10))
-        screen.blit(self.font.render("+", True, WHITE), (self.robot_plus_btn.centerx - 6, self.robot_plus_btn.centery - 10))
-
-    def handle_input(self, event):
-        res = super().handle_input(event)
-        if res == "CLOSE": return "CLOSE"
-        
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.research_btn.collidepoint(event.pos):
-                self.game.ui_manager.open_window(ResearchWindow(self.rm))
-                return "HANDLED"
-            
-            if hasattr(self, 'robot_minus_btn') and self.robot_minus_btn.collidepoint(event.pos):
-                if self.building.robots_assigned > 0:
-                    self.building.robots_assigned -= 1
-                    self.rm.inventory["robots"] = self.rm.inventory.get("robots", 0) + 1
-                return "HANDLED"
-            
-            if hasattr(self, 'robot_plus_btn') and self.robot_plus_btn.collidepoint(event.pos):
-                if self.rm.inventory.get("robots", 0) > 0:
-                    current_total = len(self.building.assigned_workers) + self.building.robots_assigned
-                    if current_total < 3 * self.building.level:
-                        self.building.robots_assigned += 1
-                        self.rm.inventory["robots"] -= 1
-                return "HANDLED"
         return None
 
 class ExitConfirmationWindow(Window):
@@ -982,14 +798,14 @@ class ExitConfirmationWindow(Window):
         super().draw(screen)
         pygame.draw.rect(screen, (50, 150, 50), self.save_exit_btn)
         pygame.draw.rect(screen, (150, 50, 50), self.nosave_exit_btn)
-        s1 = self.font.render("Save and Exit", True, WHITE)
-        s2 = self.font.render("Exit without Saving", True, WHITE)
+        s1, s2 = self.font.render("Save and Exit", True, WHITE), self.font.render("Exit without Saving", True, WHITE)
         screen.blit(s1, (self.save_exit_btn.centerx - s1.get_width()//2, self.save_exit_btn.centery - s1.get_height()//2))
         screen.blit(s2, (self.nosave_exit_btn.centerx - s2.get_width()//2, self.nosave_exit_btn.centery - s2.get_height()//2))
 
     def handle_input(self, event):
         res = super().handle_input(event)
         if res == "CLOSE": return "CLOSE"
+        if res: return res
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.save_exit_btn.collidepoint(event.pos): return "SAVE_EXIT"
             if self.nosave_exit_btn.collidepoint(event.pos): return "NO_SAVE_EXIT"
@@ -998,130 +814,80 @@ class ExitConfirmationWindow(Window):
 class BuildingTab(Window):
     def __init__(self, input_handler, resource_manager, world):
         super().__init__(50, 50, 300, 400, "Construction")
-        self.input_handler = input_handler
-        self.rm = resource_manager
-        self.world = world
+        self.input_handler, self.rm, self.world = input_handler, resource_manager, world
+        if not self.world.has_house(): self.options = ["House"]
+        elif not self.world.has_all_workshops(): self.options = ["Logging Workshop", "Stone Refinery", "Mine"]
+        else: self.options = ["Logging Workshop", "Stone Refinery", "Mine", "Copper Mine", "Blast Furnace", "Advanced Machine Factory", "Power Plant", "House", "Farm", "Garden", "Oxygenator", "Raw Material Factory", "Rocket Ship", "Warehouse", "Laboratory"]
+        if any(b.type == "Laboratory" for b in self.world.buildings.values()) and "Laboratory" in self.options: self.options.remove("Laboratory")
         
-        # Progression logic
-        if not self.world.has_house():
-            self.options = ["House"]
-        elif not self.world.has_all_workshops():
-            self.options = ["Logging Workshop", "Stone Refinery", "Mine"]
-        else:
-            self.options = ["Logging Workshop", "Stone Refinery", "Mine", "House", "Farm", "Garden", "Oxygenator", "Rocket Ship", "Warehouse", "Laboratory"]
-            
-        self.buttons = []
-        self.checkboxes = []
-        self.content_height = len(self.options) * 50 + 50
-        
+        self.buttons, self.checkboxes = [], []
+        self.content_height = len(self.options) * 50 + 20
+        # Start buttons below title area (y + 70)
+        start_y = self.rect.y + 75
         for i, opt in enumerate(self.options):
-            y_pos = self.rect.y + 40 + (i * 50)
-            btn = pygame.Rect(self.rect.x + 10, y_pos, 240, 40)
-            chk = pygame.Rect(self.rect.x + 260, y_pos + 10, 20, 20)
-            self.buttons.append((btn, opt))
-            self.checkboxes.append((chk, opt))
+            y = start_y + (i * 50)
+            self.buttons.append((pygame.Rect(self.rect.x + 10, y, 240, 40), opt))
+            self.checkboxes.append((pygame.Rect(self.rect.x + 260, y + 10, 20, 20), opt))
 
     def draw(self, screen):
         super().draw(screen)
-        
-        content_rect = pygame.Rect(self.rect.x + 2, self.rect.y + 30, self.rect.width - 4, self.rect.height - 32)
+        # Content area starts at y + 70
+        content_rect = pygame.Rect(self.rect.x + 2, self.rect.y + 70, self.rect.width - 4, self.rect.height - 72)
         content_surf = pygame.Surface((content_rect.width, content_rect.height), pygame.SRCALPHA)
         
-        locked_map = {
-            "Warehouse": "Advanced Architecture",
-            "Garden": "Botany",
-            "Oxygenator": "Life Support",
-            "Rocket Ship": "Aerospace Engineering"
-        }
+        lmap = {"Warehouse": "Advanced Architecture", "Garden": "Botany", "Oxygenator": "Life Support", "Raw Material Factory": "Factory Automation", "Blast Furnace": "Advanced Metallurgy", "Power Plant": "Power Generation", "Advanced Machine Factory": "Advanced Engineering", "Rocket Ship": "Aerospace Engineering"}
         
         for btn, opt in self.buttons:
-            # Check if locked
-            is_locked = False
-            if opt in locked_map:
-                tech_id = locked_map[opt]
-                if tech_id not in self.rm.unlocked_techs:
-                    is_locked = True
-
-            # Adjust btn position for drawing on local surface
-            draw_btn = btn.copy()
-            draw_btn.x -= self.rect.x + 2
-            draw_btn.y -= self.rect.y + 30
-            draw_btn.y += self.scroll_y
+            locked = opt in lmap and lmap[opt] not in self.rm.unlocked_techs
+            dbtn = btn.copy()
+            # Make relative to content_surf and apply scroll
+            dbtn.x -= content_rect.x
+            dbtn.y = dbtn.y - content_rect.y + self.scroll_y
             
-            # Button Style
-            btn_color = (100, 100, 100) if is_locked else (160, 110, 80)
-            pygame.draw.rect(content_surf, btn_color, draw_btn, border_radius=5)
-            pygame.draw.rect(content_surf, (60, 40, 30), draw_btn, 2, border_radius=5)
-            
-            text_color = (180, 180, 180) if is_locked else WHITE
-            text = self.font.render(opt, True, text_color)
-            content_surf.blit(text, (draw_btn.x + 10, draw_btn.y + 10))
-            
-            if is_locked:
-                lock_txt = self.font.render("LOCKED", True, (200, 50, 50))
-                content_surf.blit(lock_txt, (draw_btn.right - 70, draw_btn.y + 10))
+            pygame.draw.rect(content_surf, (100, 100, 100) if locked else (160, 110, 80), dbtn, border_radius=5)
+            pygame.draw.rect(content_surf, (60, 40, 30), dbtn, 2, border_radius=5)
+            content_surf.blit(self.font.render(opt, True, (180, 180, 180) if locked else WHITE), (dbtn.x + 10, dbtn.y + 10))
+            if locked: content_surf.blit(self.font.render("LOCKED", True, (200, 50, 50)), (dbtn.right - 70, dbtn.y + 10))
             
         for chk, opt in self.checkboxes:
-            draw_chk = chk.copy()
-            draw_chk.x -= self.rect.x + 2
-            draw_chk.y -= self.rect.y + 30
-            draw_chk.y += self.scroll_y
+            dchk = chk.copy()
+            dchk.x -= content_rect.x
+            dchk.y = dchk.y - content_rect.y + self.scroll_y
             
-            pygame.draw.rect(content_surf, WHITE, draw_chk)
-            pygame.draw.rect(content_surf, BLACK, draw_chk, 1)
-            is_pinned = any(p["name"] == opt for p in self.rm.pinned_costs)
-            if is_pinned:
-                pygame.draw.line(content_surf, BLACK, (draw_chk.x, draw_chk.y), (draw_chk.x + 20, draw_chk.y + 20), 2)
-                pygame.draw.line(content_surf, BLACK, (draw_chk.x + 20, draw_chk.y), (draw_chk.x, draw_chk.y + 20), 2)
+            pygame.draw.rect(content_surf, WHITE, dchk)
+            pygame.draw.rect(content_surf, BLACK, dchk, 1)
+            if any(p["name"] == opt for p in self.rm.pinned_costs):
+                pygame.draw.line(content_surf, BLACK, (dchk.x, dchk.y), (dchk.x + 20, dchk.y + 20), 2)
+                pygame.draw.line(content_surf, BLACK, (dchk.x + 20, dchk.y), (dchk.x, dchk.y + 20), 2)
                 
         screen.blit(content_surf, content_rect.topleft)
 
     def handle_input(self, event):
         res = super().handle_input(event)
-        if res == "CLOSE": return "CLOSE"
-        if res == "HANDLED": return "HANDLED"
+        if res in ["CLOSE", "HANDLED"]: return res
         
-        locked_map = {
-            "Warehouse": "Advanced Architecture",
-            "Garden": "Botany",
-            "Oxygenator": "Life Support",
-            "Rocket Ship": "Aerospace Engineering"
-        }
-
+        lmap = {"Warehouse": "Advanced Architecture", "Garden": "Botany", "Oxygenator": "Life Support", "Raw Material Factory": "Factory Automation", "Blast Furnace": "Advanced Metallurgy", "Power Plant": "Power Generation", "Advanced Machine Factory": "Advanced Engineering", "Rocket Ship": "Aerospace Engineering"}
+        
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            # Adjust mouse pos for scrolling content space
-            mx, my = event.pos
-            # The buttons are stored with screen-relative Y in __init__, 
-            # but we draw them with scroll_y.
-            # Let's check collision against the VISUAL position or adjust mouse.
-            
-            for btn, opt in self.buttons:
-                # Visual rect:
-                visual_btn = btn.copy()
-                visual_btn.y += self.scroll_y
-                # Also need to check if mouse is within the content clip area
-                content_rect = pygame.Rect(self.rect.x + 2, self.rect.y + 30, self.rect.width - 4, self.rect.height - 32)
-                
-                if content_rect.collidepoint(event.pos) and visual_btn.collidepoint(event.pos):
-                    if opt in locked_map and locked_map[opt] not in self.rm.unlocked_techs:
-                        return "HANDLED" # Locked
-                    self.input_handler.set_build_mode(opt)
-                    return "CLOSE"
-            
-            for chk, opt in self.checkboxes:
-                visual_chk = chk.copy()
-                visual_chk.y += self.scroll_y
-                content_rect = pygame.Rect(self.rect.x + 2, self.rect.y + 30, self.rect.width - 4, self.rect.height - 32)
-
-                if content_rect.collidepoint(event.pos) and visual_chk.collidepoint(event.pos):
-                    if opt in locked_map and locked_map[opt] not in self.rm.unlocked_techs:
-                        return "HANDLED" # Locked
-                    is_pinned = any(p["name"] == opt for p in self.rm.pinned_costs)
-                    if is_pinned:
-                        self.rm.unpin_cost(opt)
-                    else:
-                        cost = Building.get_cost(opt)
-                        self.rm.pin_cost(opt, cost)
+            # Click detection must match content_rect
+            crect = pygame.Rect(self.rect.x + 2, self.rect.y + 70, self.rect.width - 4, self.rect.height - 72)
+            if crect.collidepoint(event.pos):
+                for btn, opt in self.buttons:
+                    vbtn = btn.copy()
+                    vbtn.y += self.scroll_y
+                    if vbtn.collidepoint(event.pos):
+                        if opt in lmap and lmap[opt] not in self.rm.unlocked_techs: return "HANDLED"
                         self.input_handler.set_build_mode(opt)
-                    return "HANDLED"
+                        return "CLOSE"
+                for chk, opt in self.checkboxes:
+                    vchk = chk.copy()
+                    vchk.y += self.scroll_y
+                    if vchk.collidepoint(event.pos):
+                        if opt in lmap and lmap[opt] not in self.rm.unlocked_techs: return "HANDLED"
+                        if any(p["name"] == opt for p in self.rm.pinned_costs): 
+                            self.rm.unpin_cost(opt)
+                        else:
+                            self.rm.pin_cost(opt, Building.get_cost(opt))
+                            self.input_handler.set_build_mode(opt)
+                        return "HANDLED"
         return None

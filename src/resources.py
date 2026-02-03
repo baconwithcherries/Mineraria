@@ -6,12 +6,14 @@ class ResourceManager:
             "iron": 10,
             "food": 0,
             "oxygen": 0,
-            "robots": 0,
             "steel": 0,
             "copper": 0,
             "gold": 0,
             "emerald": 0,
-            "diamond": 0
+            "diamond": 0,
+            "material_parts": 0,
+            "wiring": 0,
+            "batteries": 0
         }
         
         # Job Targets (-1 means Max)
@@ -22,7 +24,11 @@ class ResourceManager:
             "Farm": -1,
             "Garden": -1,
             "Oxygenator": -1,
-            "Laboratory": -1
+            "Laboratory": -1,
+            "Raw Material Factory": -1,
+            "Copper Mine": -1,
+            "Blast Furnace": -1,
+            "Power Plant": -1
         }
         
         self.pinned_costs = [] # List of dicts e.g. [{"wood": 5}, {"stone": 5}]
@@ -47,14 +53,20 @@ class ResourceManager:
 
     def has_resources(self, cost_dict):
         for res, amount in cost_dict.items():
-            if self.inventory.get(res, 0) < amount:
+            if res == "science":
+                if self.science_points < amount:
+                    return False
+            elif self.inventory.get(res, 0) < amount:
                 return False
         return True
 
     def deduct_resources(self, cost_dict):
         if self.has_resources(cost_dict):
             for res, amount in cost_dict.items():
-                self.inventory[res] -= amount
+                if res == "science":
+                    self.science_points -= amount
+                else:
+                    self.inventory[res] -= amount
             # Remove from pinned if satisfied? Spec says "Logic: Updates in real-time as player collects resources."
             # Actually, usually pins stay until user unpins or completes.
             # But if I build, I consume resources.
